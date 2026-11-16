@@ -1,0 +1,11 @@
+.au{padding:24px 16px}
+.au h1{font-size:22px;margin:0 0 4px;font-weight:700}
+.au-s{font-size:14px;color:#6B7280;margin:0 0 14px}
+.au label{display:block;font-size:14px;font-weight:600;margin:10px 0 4px}
+.au input{width:100%;border:1.5px solid #D1D5DB;border-radius:12px;padding:12px;font-size:16px;background:#fff;color:#1F2937;font-family:inherit}
+.au-b{width:100%;border:0;border-radius:16px;background:#E8590C;color:#fff;padding:16px;font-size:18px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:14px}
+.au-b:disabled{opacity:.6}
+.au-e{color:#B91C1C;font-size:14px;margin-top:8px;min-height:18px}
+.au-l{background:none;border:0;color:#E8590C;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px;padding:8px 0}
+.salir{background:none;border:0;color:#6B7280;font-size:13px;text-decoration:underline;cursor:pointer;font-family:inherit;padding:6px 0}
+.carga{text-align:center;color:#6B7280;padding:40px 0;font-size:15px}
