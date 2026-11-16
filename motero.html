@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ya te llega - Motero</title>
+<link rel="stylesheet" href="ytl.css">
+<style>
+  :root { --n:#E8590C; --g:#1F2937; --c:#FFF6E5; --m:#6B7280; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--g); background:#EDEAE0; }
+  .app { max-width:460px; margin:0 auto; min-height:100vh; background:#fff; padding:16px 16px 40px; }
+  .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .top b { font-size:20px; font-weight:700; }
+  .estado { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600; color:var(--m); }
+  .estado i { width:10px; height:10px; border-radius:50%; background:#9CA3AF; display:inline-block; }
+  .estado.on { color:#166534; } .estado.on i { background:#22C55E; }
+  .tarj { background:#fff; border:1px solid #E5E7EB; border-radius:18px; padding:14px; margin-bottom:12px; }
+  .tarj.dest { border:2px solid var(--n); background:var(--c); }
+  h2 { font-size:18px; margin:0 0 8px; font-weight:700; }
+  .fila { display:flex; gap:10px; align-items:flex-start; margin:8px 0; font-size:16px; line-height:1.35; }
+  .pt { width:12px; height:12px; border-radius:50%; margin-top:5px; flex:none; }
+  .pago { display:flex; align-items:center; gap:10px; background:#FFF6E5; border-radius:12px; padding:12px; font-size:16px; font-weight:600; margin-top:10px; }
+  .grande { width:100%; border:0; border-radius:16px; padding:17px; font-size:19px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:10px; }
+  .grande:disabled { opacity:.6; }
+  .p { background:var(--n); color:#fff; }
+  .s { background:#F3F4F6; color:var(--g); }
+  .mapas { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+  .mapas a { text-align:center; padding:13px; border:2px solid var(--n); border-radius:14px; color:var(--g); text-decoration:none; font-size:16px; font-weight:600; background:#fff; }
+  .tiempo { height:6px; border-radius:3px; background:#E5E7EB; margin-top:10px; overflow:hidden; }
+  .tiempo div { height:100%; width:100%; background:var(--n); transition:width 1s linear; }
+  #codigo { width:100%; border:2px solid #E5E7EB; border-radius:14px; padding:14px; font-size:22px; text-align:center; letter-spacing:8px; font-family:inherit; margin-top:8px; }
+  .err { color:#B91C1C; font-size:15px; min-height:18px; margin-top:6px; }
+  .cas { display:flex; align-items:center; gap:10px; padding:10px 0; font-size:17px; cursor:pointer; }
+  .caja { width:26px; height:26px; border:2px solid var(--g); border-radius:5px; background:#fff; color:#fff; display:flex; align-items:center; justify-content:center; font-size:17px; line-height:1; flex:none; }
+  .cas.sel .caja { background:var(--n); border-color:var(--n); }
+  .vacio { color:var(--m); text-align:center; padding:30px 0; font-size:16px; }
+  .nota { font-size:12px; color:var(--m); text-align:center; margin-top:16px; }
+  .gan { font-size:26px; font-weight:700; }
+  .slide { position:relative; height:62px; border-radius:31px; background:var(--n); margin-top:10px; overflow:hidden; user-select:none; -webkit-user-select:none; box-shadow:0 4px 10px rgba(232,89,12,.3); }
+  .slide .t { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:18px; padding:0 64px; text-align:center; pointer-events:none; }
+  .slide .h { position:absolute; left:6px; top:6px; width:50px; height:50px; border-radius:50%; background:#fff; color:var(--n); display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:700; touch-action:none; cursor:grab; }
+  .slide .fl { position:absolute; right:18px; top:0; bottom:0; display:flex; align-items:center; color:#fff; opacity:.7; font-size:30px; font-weight:700; pointer-events:none; }
+  .oculto { display:none; }
+  .pasos { display:flex; gap:6px; margin:0 0 12px; }
+  .pasos span { flex:1; height:6px; border-radius:3px; background:#E5E7EB; }
+  .pasos span.ok { background:var(--n); }
+  .paso-t { font-size:15px; font-weight:700; color:var(--n); margin-bottom:8px; }
+  /* registro */
+  h1 { font-size:22px; margin:0 0 4px; font-weight:700; }
+  .sub { font-size:14px; color:var(--m); margin:0 0 14px; }
+  .prog { display:flex; gap:6px; margin-bottom:14px; }
+  .prog span { flex:1; height:6px; border-radius:3px; background:#E5E7EB; }
+  .prog span.ok { background:var(--n); }
+  .sec { background:var(--c); border-radius:16px; padding:14px; margin-bottom:12px; }
+  .sec h2 { font-size:16px; margin:0 0 10px; font-weight:700; }
+  #v-reg label { display:block; font-size:14px; font-weight:600; margin:10px 0 4px; }
+  #v-reg label small { font-weight:400; color:var(--m); }
+  #v-reg input[type=text], #v-reg input[type=tel], #v-reg input[type=number], #v-reg input[type=date] { width:100%; border:1.5px solid #D1D5DB; border-radius:12px; padding:12px; font-size:16px; background:#fff; color:var(--g); font-family:inherit; }
+  .doc { background:#fff; border-radius:12px; padding:10px 12px; margin-top:10px; }
+  .doc b { font-size:15px; display:block; }
+  .doc .ayuda { font-size:13px; color:var(--m); margin:2px 0 8px; }
+  .foto { display:flex; align-items:center; gap:10px; margin-top:8px; }
+  .foto .bt { border:1.5px solid var(--n); color:var(--n); background:#fff; border-radius:10px; padding:9px 12px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; margin:0; }
+  .foto .nom { font-size:13px; color:#166534; word-break:break-all; }
+  .foto input[type=file] { display:none; }
+  .o { text-align:center; font-size:12px; color:var(--m); margin:6px 0 0; }
+  #v-reg .cas { align-items:flex-start; padding:8px 0; font-size:14px; line-height:1.35; }
+  #v-reg .caja { width:22px; height:22px; font-size:15px; border-radius:4px; }
+  .est { font-size:13px; margin-top:6px; }
+  .est.ok { color:#166534; } .est.mal { color:#B91C1C; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <b><span style="color:#E8590C">Ya</span>Te<span style="color:#E8590C">Llega</span> · Motero</b>
+    <div class="estado" id="estado" style="display:none"><i></i><span id="est-t">Desconectado</span></div>
+  </div>
+
+  <div id="auth" style="display:none"></div>
+
+  <div id="v-carga" class="carga">Cargando…</div>
+
+  <div id="v-reg" class="oculto">
+    <h1>Registro de motero</h1>
+    <p class="sub">Llena todo para poder recibir pedidos. Tus datos solo los usa Ya te llega.</p>
+    <div class="prog" id="prog"><span></span><span></span><span></span></div>
+
+    <div class="sec">
+      <h2>1. Tus datos</h2>
+      <label for="nombre">Nombre completo</label>
+      <input type="text" id="nombre" autocomplete="name" placeholder="Como sale en tu cédula">
+      <label for="cedula">Número de cédula</label>
+      <input type="text" id="cedula" inputmode="numeric" autocomplete="off" placeholder="Solo números">
+      <label for="cel">Celular (WhatsApp)</label>
+      <input type="tel" id="cel" inputmode="numeric" autocomplete="tel" placeholder="3001234567">
+      <label for="correo">Correo</label>
+      <input type="text" id="correo" autocomplete="email" placeholder="nombre@correo.com">
+      <label for="dir">Dirección de residencia <small>donde vives</small></label>
+      <input type="text" id="dir" autocomplete="street-address" placeholder="Ej. Cra 5 # 10-20, apto 301">
+      <label for="barrio">Barrio</label>
+      <input type="text" id="barrio" placeholder="Ej. Granada">
+      <label for="ciudad">Ciudad</label>
+      <input type="text" id="ciudad" value="Cali" placeholder="Ej. Cali">
+      <label for="nequi">Tu Nequi <small>para recibir tus pagos</small></label>
+      <input type="tel" id="nequi" inputmode="numeric" placeholder="Número de celular del Nequi">
+      <div class="doc">
+        <b>Foto tuya, de frente</b>
+        <div class="foto"><label class="bt">Tomar o escoger foto<input type="file" accept="image/*" data-n="selfie"></label><span class="nom"></span></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>2. Documentos</h2>
+      <div class="doc">
+        <b>Licencia de conducción</b>
+        <div class="ayuda">Categoría A2 para moto. La foto es obligatoria.</div>
+        <label for="licv" style="margin-top:0">Fecha de vencimiento</label>
+        <input type="date" id="licv">
+        <div class="foto"><label class="bt">Foto de la licencia<input type="file" accept="image/*" data-n="licencia"></label><span class="nom"></span></div>
+      </div>
+      <div class="doc">
+        <b>Tarjeta de propiedad</b>
+        <div class="ayuda">Licencia de tránsito de la moto. La foto es obligatoria.</div>
+        <div class="foto"><label class="bt">Foto de la tarjeta<input type="file" accept="image/*" data-n="tarjeta"></label><span class="nom"></span></div>
+      </div>
+      <div class="doc">
+        <b>SOAT vigente</b>
+        <div class="ayuda">Escribe la fecha de vencimiento o sube la foto. Con cualquiera de las dos basta.</div>
+        <label for="soatv" style="margin-top:0">Fecha de vencimiento</label>
+        <input type="date" id="soatv">
+        <div class="est" id="soat-est"></div>
+        <div class="o">o</div>
+        <div class="foto"><label class="bt">Foto del SOAT<input type="file" accept="image/*" data-n="soat"></label><span class="nom"></span></div>
+      </div>
+      <div class="doc">
+        <b>Revisión técnico-mecánica</b>
+        <div class="ayuda">Escribe la fecha de vencimiento o sube la foto. Con cualquiera de las dos basta.</div>
+        <div class="cas" id="notec" role="checkbox" aria-checked="false" tabindex="0"><span class="caja"></span><span>Mi moto todavía no necesita revisión técnico-mecánica</span></div>
+        <div id="tec-campos">
+          <label for="tecv" style="margin-top:0">Fecha de vencimiento</label>
+          <input type="date" id="tecv">
+          <div class="est" id="tec-est"></div>
+          <div class="o">o</div>
+          <div class="foto"><label class="bt">Foto de la revisión<input type="file" accept="image/*" data-n="tecno"></label><span class="nom"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>3. Tu moto</h2>
+      <label for="placa">Placa</label>
+      <input type="text" id="placa" maxlength="6" autocapitalize="characters" autocomplete="off" placeholder="ABC12D">
+      <label for="marca">Marca</label>
+      <input type="text" id="marca" placeholder="Ej. Honda, Yamaha, AKT">
+      <label for="modelo">Modelo</label>
+      <input type="text" id="modelo" placeholder="Ej. CB 125F">
+      <label for="anio">Año</label>
+      <input type="number" id="anio" inputmode="numeric" placeholder="Ej. 2022">
+      <label for="color">Color</label>
+      <input type="text" id="color" placeholder="Ej. Negro">
+    </div>
+
+    <div class="cas" id="acepto" role="checkbox" aria-checked="false" tabindex="0"><span class="caja"></span><span>Acepto los términos y que usen mis datos personales, según la ley de Colombia.</span></div>
+    <button class="grande p" id="enviar" type="button">Enviar mi registro</button>
+    <div class="err" id="rerr" role="alert"></div>
+    <p class="nota">No puedes recibir pedidos hasta que revisemos tus documentos y te aprobemos.</p>
+    <p style="text-align:center"><button class="salir" type="button" onclick="salir()">Cerrar sesión</button></p>
+  </div>
+
+  <div id="v-rev" class="oculto">
+    <div class="tarj dest">
+      <h2 id="rev-t">Registro en revisión</h2>
+      <div id="rev-d" style="font-size:16px;line-height:1.5"></div>
+    </div>
+    <button class="grande s" id="rev-act" type="button">Revisar si ya me aprobaron</button>
+    <p style="text-align:center"><button class="salir" type="button" onclick="salir()">Cerrar sesión</button></p>
+  </div>
+
+  <div id="v-off" class="oculto">
+    <div class="vacio">Estás desconectado. Conéctate para empezar a recibir envíos.</div>
+    <button class="grande p" id="conectar" type="button">Conectarme</button>
+    <p style="text-align:center"><button class="salir" type="button" onclick="salir()">Cerrar sesión</button></p>
+  </div>
+
+  <div id="v-espera" class="oculto">
+    <div class="vacio">Esperando pedidos…</div>
+    <div class="err" id="esp-msg" style="text-align:center"></div>
+    <button class="grande s" id="desconectar" type="button">Desconectarme</button>
+  </div>
+
+  <div id="v-oferta" class="oculto">
+    <div class="tarj dest">
+      <h2>Pedido nuevo</h2>
+      <div class="fila"><span class="pt" style="background:var(--n)"></span><span><b>Recoger:</b> <span id="o-rec"></span></span></div>
+      <div class="fila"><span class="pt" style="background:#111827"></span><span><b>Entregar:</b> <span id="o-ent"></span></span></div>
+      <div class="fila"><span id="o-serv"></span></div>
+      <div class="pago" id="o-pago"></div>
+      <div style="margin-top:10px">Tu ganancia (85%): <span class="gan" id="o-gan"></span></div>
+      <div class="tiempo"><div id="barra"></div></div>
+    </div>
+    <button class="grande p" id="aceptar" type="button">Aceptar</button>
+    <button class="grande s" id="rechazar" type="button">Rechazar</button>
+  </div>
+
+  <div id="v-recoger" class="oculto">
+    <div class="pasos" id="pasos-r"><span></span><span></span><span></span></div>
+    <div class="tarj dest">
+      <div class="paso-t" id="t-r"></div>
+      <h2>Ve a recoger el pedido</h2>
+      <div class="fila"><span class="pt" style="background:var(--n)"></span><span id="r-dir"></span></div>
+      <div class="mapas">
+        <a target="_blank" rel="noopener" id="r-waze" href="#">Waze</a>
+        <a target="_blank" rel="noopener" id="r-gmaps" href="#">Google Maps</a>
+      </div>
+      <div class="pago" id="r-pago"></div>
+    </div>
+    <button class="grande p" id="recogi" type="button">Estoy en camino</button>
+    <div class="err" id="r-err" role="alert"></div>
+  </div>
+
+  <div id="v-entregar" class="oculto">
+    <div class="pasos" id="pasos-e"><span></span><span></span><span></span></div>
+    <div class="tarj dest">
+      <div class="paso-t" id="t-e"></div>
+      <h2>Ve a entregar el pedido</h2>
+      <div class="fila"><span class="pt" style="background:#111827"></span><span id="e-dir"></span></div>
+      <div class="mapas">
+        <a target="_blank" rel="noopener" id="e-waze" href="#">Waze</a>
+        <a target="_blank" rel="noopener" id="e-gmaps" href="#">Google Maps</a>
+      </div>
+    </div>
+    <div class="tarj oculto" id="al-llegar">
+      <h2>Al llegar</h2>
+      <div class="pago" id="e-pago"></div>
+      <div id="e-conf" class="oculto">
+        <div class="cas" id="cas" role="checkbox" aria-checked="false" tabindex="0"><span class="caja"></span>Confirmo que el pago por Nequi me llegó</div>
+      </div>
+      <div style="margin-top:12px;font-weight:600">Código de entrega del cliente</div>
+      <input type="text" id="codigo" inputmode="numeric" maxlength="4" placeholder="----" autocomplete="off">
+      <div class="err" id="err" role="alert"></div>
+    </div>
+    <button class="grande p" id="voy" type="button">Voy a entregar</button>
+    <button class="grande p oculto" id="entregar" type="button">Entregar y cerrar</button>
+    <div class="err" id="e-err" role="alert"></div>
+  </div>
+
+  <div id="v-fin" class="oculto">
+    <div class="tarj dest">
+      <h2>Entrega terminada</h2>
+      <div class="fila">Ganaste <span class="gan" id="f-gan"></span></div>
+      <div class="fila" id="f-pago"></div>
+    </div>
+    <button class="grande p" id="otra" type="button">Seguir recibiendo pedidos</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="ytl.js"></script>
+<script>
+(function () {
+  var vistas = ['carga', 'reg', 'rev', 'off', 'espera', 'oferta', 'recoger', 'entregar', 'fin'];
+  var user = null, mot = null, ped = null, tmr = null, actual = 'carga', fr = 0, fe = 0, nconf = false, saltados = {};
+  var archivos = {}, acepto = false, notec = false;
+  var SNOM = { paquete: 'Paquete', medicamentos: 'Medicamentos', comida: 'Comida', productos: 'Productos' };
+  var ACTIVOS = ['aceptado', 'en_camino', 'en_recogida', 'recogido', 'en_entrega'];
+  var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+
+  function ver(v) {
+    actual = v;
+    vistas.forEach(function (x) { $('v-' + x).classList.toggle('oculto', x !== v); });
+    var conectado = ['espera', 'oferta', 'recoger', 'entregar', 'fin'].indexOf(v) >= 0;
+    $('estado').classList.toggle('on', conectado);
+    $('est-t').textContent = conectado ? 'Conectado' : 'Desconectado';
+    $('estado').style.display = (v === 'carga' || v === 'reg' || v === 'rev') ? 'none' : 'flex';
+  }
+  function textoPago() {
+    return ped.forma_pago === 'nequi'
+      ? 'Te pagan por Nequi: confirma que te llegó el pago'
+      : 'Te pagan en efectivo: cobra ' + fmt(ped.precio_cop) + ' al entregar';
+  }
+  function dirTxt(d, b) { return d + (b ? ', ' + b : '') + ', Cali'; }
+  function enlaces(pre, d, b) {
+    var q = encodeURIComponent(dirTxt(d, b) + ', Valle del Cauca, Colombia');
+    $(pre + '-waze').href = 'https://waze.com/ul?q=' + q + '&navigate=no';
+    $(pre + '-gmaps').href = 'https://www.google.com/maps/search/?api=1&query=' + q;
+  }
+
+  /* ---------- entrada ---------- */
+  entrar($('auth'), 'Entra como motero', function (u) { user = u; $('auth').style.display = 'none'; ver('carga'); cargarMotero(); });
+  setTimeout(function () { if ($('auth').style.display === 'block') $('v-carga').classList.add('oculto'); }, 800);
+
+  function cargarMotero() {
+    sb.from('moteros').select('*').eq('user_id', user.id).maybeSingle().then(function (r) {
+      if (r.error) { $('v-carga').textContent = errMsg(r.error); return; }
+      if (!r.data) { ver('reg'); $('correo').value = user.email || ''; progreso(); return; }
+      mot = r.data; despuesDeCargar();
+    });
+  }
+  function despuesDeCargar() {
+    if (mot.estado !== 'aprobado') { pantallaRev(); return; }
+    buscarActivo();
+    setInterval(buscar, 4000);
+  }
+  function pantallaRev() {
+    ver('rev');
+    var t = $('rev-t'), d = $('rev-d');
+    if (mot.estado === 'pendiente') { t.textContent = 'Registro en revisión'; d.textContent = 'Ya recibimos tus datos y documentos. Cuando los revisemos te aprobamos y ya podrás recibir pedidos. Vuelve a abrir esta página más tarde.'; }
+    else if (mot.estado === 'rechazado') { t.textContent = 'Registro no aprobado'; d.textContent = 'Tu registro no fue aprobado. Comunícate con Ya te llega para revisar qué falta.'; }
+    else { t.textContent = 'Cuenta suspendida'; d.textContent = 'Tu cuenta está suspendida por ahora. Comunícate con Ya te llega.'; }
+  }
+  $('rev-act').onclick = function () {
+    sb.from('moteros').select('*').eq('user_id', user.id).maybeSingle().then(function (r) {
+      if (r.data) { mot = r.data; if (mot.estado === 'aprobado') despuesDeCargar(); else pantallaRev(); }
+    });
+  };
+
+  /* ---------- registro ---------- */
+  document.querySelectorAll('input[type=file]').forEach(function (f) {
+    f.addEventListener('change', function () {
+      var nom = f.parentNode.parentNode.querySelector('.nom');
+      if (f.files && f.files[0]) { archivos[f.dataset.n] = f.files[0]; nom.textContent = '✓ ' + f.files[0].name; }
+      else { delete archivos[f.dataset.n]; nom.textContent = ''; }
+      progreso(); estados();
+    });
+  });
+  function vigente(x) { if (!x) return null; return new Date(x + 'T00:00:00') >= hoy; }
+  function estado(idInput, idEst, foto) {
+    var e = $(idEst), x = $(idInput).value, r = vigente(x);
+    e.className = 'est';
+    if (r === true) { e.textContent = 'Vigente'; e.classList.add('ok'); }
+    else if (r === false) { e.textContent = 'Vencido: no puedes registrarlo así. Renuévalo.'; e.classList.add('mal'); }
+    else if (foto) { e.textContent = 'Con foto: queda para revisión.'; e.classList.add('ok'); }
+    else e.textContent = '';
+  }
+  function estados() { estado('soatv', 'soat-est', archivos.soat); estado('tecv', 'tec-est', archivos.tecno); }
+  ['soatv', 'tecv'].forEach(function (i) { $(i).addEventListener('input', function () { estados(); progreso(); }); });
+  casilla($('acepto'), function (s) { acepto = s; $('rerr').textContent = ''; });
+  casilla($('notec'), function (s) { notec = s; $('tec-campos').style.display = s ? 'none' : 'block'; progreso(); });
+  $('placa').addEventListener('input', function () { this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+
+  function v(i) { return $(i).value.trim(); }
+  function ok1() { return v('nombre').length >= 5 && /^\d{6,10}$/.test(v('cedula')) && /^3\d{9}$/.test(v('cel')) && /^\S+@\S+\.\S+$/.test(v('correo')) && v('dir').length >= 5 && v('barrio').length >= 3 && v('ciudad').length >= 3 && /^3\d{9}$/.test(v('nequi')) && archivos.selfie; }
+  function soatOk() { var r = vigente($('soatv').value); return r === true || (r === null && archivos.soat); }
+  function tecOk() { if (notec) return true; var r = vigente($('tecv').value); return r === true || (r === null && archivos.tecno); }
+  function ok2() { return vigente($('licv').value) === true && archivos.licencia && archivos.tarjeta && soatOk() && tecOk(); }
+  function ok3() {
+    var a = parseInt(v('anio'), 10);
+    return /^[A-Z]{3}\d{2}[A-Z]$/.test(v('placa')) && v('marca') && v('modelo') && a >= 1990 && a <= hoy.getFullYear() + 1 && v('color');
+  }
+  function progreso() {
+    var s = $('prog').children;
+    s[0].classList.toggle('ok', !!ok1()); s[1].classList.toggle('ok', !!ok2()); s[2].classList.toggle('ok', !!ok3());
+  }
+  document.querySelectorAll('#v-reg input').forEach(function (i) { i.addEventListener('input', progreso); });
+
+  function subir(file, nombre) {
+    var ext = ((file.name.split('.').pop()) || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    var path = user.id + '/' + nombre + '-' + Date.now() + '.' + ext;
+    return sb.storage.from('documentos').upload(path, file, { contentType: file.type || 'image/jpeg' }).then(function (r) {
+      if (r.error) throw r.error;
+      return path;
+    });
+  }
+
+  $('enviar').addEventListener('click', function () {
+    var e = $('rerr');
+    if (!ok1()) { e.textContent = 'Revisa tus datos: nombre, cédula, celular (10 números que empiezan por 3), correo, dirección de residencia, barrio, ciudad, Nequi y tu foto.'; return; }
+    if (vigente($('licv').value) !== true) { e.textContent = 'Pon la fecha de vencimiento de tu licencia, y que no esté vencida.'; return; }
+    if (!archivos.licencia) { e.textContent = 'Falta la foto de la licencia.'; return; }
+    if (!archivos.tarjeta) { e.textContent = 'Falta la foto de la tarjeta de propiedad.'; return; }
+    if (!soatOk()) { e.textContent = 'SOAT: pon una fecha de vencimiento vigente o sube la foto.'; return; }
+    if (!tecOk()) { e.textContent = 'Revisión técnico-mecánica: pon una fecha vigente, sube la foto, o marca que todavía no le toca.'; return; }
+    if (!ok3()) { e.textContent = 'Revisa los datos de la moto: placa con formato ABC12D, marca, modelo, año y color.'; return; }
+    if (!acepto) { e.textContent = 'Marca que aceptas los términos y el uso de tus datos.'; return; }
+    e.textContent = 'Enviando tu registro y tus fotos… puede tardar un momento.';
+    $('enviar').disabled = true;
+    var rutas = {};
+    var nombres = Object.keys(archivos);
+    Promise.all(nombres.map(function (n) { return subir(archivos[n], n).then(function (p) { rutas[n] = p; }); })).then(function () {
+      return sb.from('moteros').insert({
+        user_id: user.id, nombre: v('nombre'), cedula: v('cedula'), celular: v('cel'), correo: v('correo'),
+        direccion: v('dir'), barrio: v('barrio'), ciudad: v('ciudad'), nequi: v('nequi'),
+        placa: v('placa'), marca: v('marca'), modelo: v('modelo'), anio: parseInt(v('anio'), 10), color: v('color'),
+        licencia_vence: $('licv').value || null, soat_vence: $('soatv').value || null,
+        tecnomecanica_vence: notec ? null : ($('tecv').value || null),
+        foto_selfie: rutas.selfie || null, foto_licencia: rutas.licencia || null, foto_tarjeta_propiedad: rutas.tarjeta || null,
+        foto_soat: rutas.soat || null, foto_tecnomecanica: rutas.tecno || null
+      }).select().single();
+    }).then(function (r) {
+      $('enviar').disabled = false;
+      if (r.error) { e.textContent = errMsg(r.error); return; }
+      e.textContent = ''; mot = r.data; pantallaRev();
+    }).catch(function (x) {
+      $('enviar').disabled = false;
+      e.textContent = errMsg(x);
+    });
+  });
+
+  /* ---------- conexión y pedidos ---------- */
+  function buscarActivo() {
+    sb.from('pedidos').select('*').eq('motero_id', mot.id).in('estado', ACTIVOS).order('actualizado_en', { ascending: false }).limit(1).then(function (r) {
+      if (r.data && r.data.length) { ped = r.data[0]; mostrarActivo(); return; }
+      if (mot.conectado) ver('espera'); else ver('off');
+    });
+  }
+  function conectar(on) {
+    return sb.from('moteros').update({ conectado: on }).eq('id', mot.id).then(function (r) { if (!r.error) mot.conectado = on; return r; });
+  }
+  $('conectar').onclick = function () { conectar(true).then(function () { $('esp-msg').textContent = ''; ver('espera'); buscar(); }); };
+  $('desconectar').onclick = function () { conectar(false).then(function () { ver('off'); }); };
+
+  function buscar() {
+    if (!mot || actual !== 'espera') return;
+    sb.from('pedidos').select('*').eq('estado', 'nuevo').order('creado_en').limit(10).then(function (r) {
+      if (actual !== 'espera' || r.error) return;
+      var p = (r.data || []).filter(function (x) { return !saltados[x.id]; })[0];
+      if (p) oferta(p);
+    });
+  }
+  function oferta(p) {
+    ped = p;
+    $('o-rec').textContent = dirTxt(p.direccion_recogida, p.barrio_recogida);
+    $('o-ent').textContent = dirTxt(p.direccion_entrega, p.barrio_entrega);
+    $('o-serv').textContent = SNOM[p.servicio] || p.servicio;
+    $('o-pago').textContent = textoPago();
+    $('o-gan').textContent = fmt(p.ganancia_motero_cop);
+    ver('oferta');
+    var t = 30; $('barra').style.width = '100%';
+    clearInterval(tmr);
+    tmr = setInterval(function () {
+      t--; $('barra').style.width = (t / 30 * 100) + '%';
+      if (t <= 0) { clearInterval(tmr); saltados[p.id] = 1; ped = null; ver('espera'); }
+    }, 1000);
+  }
+  $('rechazar').onclick = function () { clearInterval(tmr); if (ped) saltados[ped.id] = 1; ped = null; ver('espera'); };
+  $('aceptar').onclick = function () {
+    clearInterval(tmr);
+    var id = ped.id;
+    sb.rpc('tomar_pedido', { p_id: id }).then(function (r) {
+      if (r.data === true) {
+        sb.from('pedidos').select('*').eq('id', id).single().then(function (q) { ped = q.data; mostrarActivo(); });
+      } else {
+        saltados[id] = 1; ped = null; $('esp-msg').textContent = 'Otro motero ya tomó ese pedido.'; ver('espera');
+      }
+    });
+  };
+
+  function mostrarActivo() {
+    var s = ped.estado;
+    if (s === 'aceptado' || s === 'en_camino' || s === 'en_recogida') {
+      fr = { aceptado: 0, en_camino: 1, en_recogida: 2 }[s];
+      $('r-dir').textContent = dirTxt(ped.direccion_recogida, ped.barrio_recogida);
+      enlaces('r', ped.direccion_recogida, ped.barrio_recogida);
+      $('r-pago').textContent = textoPago();
+      pintarR(); ver('recoger');
+    } else if (s === 'recogido' || s === 'en_entrega') {
+      prepararEntrega(s === 'recogido' ? 0 : 1);
+    } else { ped = null; ver(mot.conectado ? 'espera' : 'off'); }
+  }
+  function pintarR() {
+    var t = ['Paso 1 de 3: ve hacia el punto de recogida', 'Paso 2 de 3: ya vas en camino', 'Paso 3 de 3: estás en el punto de recogida'];
+    var b = ['Estoy en camino', 'Llegué al punto de recogida', 'Ya recogí el pedido'];
+    $('t-r').textContent = t[fr]; $('recogi').textContent = b[fr];
+    var s = $('pasos-r').children; for (var i = 0; i < 3; i++) s[i].classList.toggle('ok', i <= fr);
+  }
+  function prepararEntrega(n) {
+    $('e-dir').textContent = dirTxt(ped.direccion_entrega, ped.barrio_entrega);
+    enlaces('e', ped.direccion_entrega, ped.barrio_entrega);
+    $('e-pago').textContent = textoPago();
+    $('e-conf').classList.toggle('oculto', ped.forma_pago !== 'nequi');
+    nconf = false; $('cas').classList.remove('sel'); $('cas').querySelector('.caja').textContent = '';
+    $('codigo').value = ''; $('err').textContent = ''; $('e-err').textContent = '';
+    fe = n; pintarE(); ver('entregar');
+  }
+  function pintarE() {
+    var t = ['Paso 1 de 3: ya tienes el pedido', 'Paso 2 de 3: ya vas en camino a entregar', 'Paso 3 de 3: estás en el punto de entrega'];
+    var b = ['Voy a entregar', 'Llegué a entregar'];
+    $('t-e').textContent = t[fe];
+    $('voy').textContent = b[fe] || '';
+    $('voy').classList.toggle('oculto', fe > 1);
+    $('entregar').classList.toggle('oculto', fe < 2);
+    $('al-llegar').classList.toggle('oculto', fe < 2);
+    var s = $('pasos-e').children; for (var i = 0; i < 3; i++) s[i].classList.toggle('ok', i <= fe);
+  }
+  function avanzar(estado, ok, errId) {
+    sb.rpc('avanzar_pedido', { p_id: ped.id, p_estado: estado }).then(function (r) {
+      if (r.data === true) { ped.estado = estado; ok(); }
+      else { $(errId).textContent = 'No se pudo avanzar. Revisa tu internet e inténtalo de nuevo.'; }
+    });
+  }
+  $('recogi').onclick = function () {
+    $('r-err').textContent = '';
+    var sig = ['en_camino', 'en_recogida', 'recogido'][fr];
+    avanzar(sig, function () {
+      if (fr < 2) { fr++; pintarR(); } else { prepararEntrega(0); }
+    }, 'r-err');
+  };
+  $('voy').onclick = function () {
+    $('e-err').textContent = '';
+    if (fe === 0) avanzar('en_entrega', function () { fe = 1; pintarE(); }, 'e-err');
+    else { fe = 2; pintarE(); }
+  };
+  casilla($('cas'), function (s) { nconf = s; $('err').textContent = ''; });
+  $('entregar').onclick = function () {
+    var e = $('err');
+    if (ped.forma_pago === 'nequi' && !nconf) { e.textContent = 'Marca que el pago por Nequi te llegó.'; return; }
+    var cod = $('codigo').value.trim();
+    if (!/^\d{4}$/.test(cod)) { e.textContent = 'Escribe el código de 4 números que te da el cliente.'; return; }
+    e.textContent = 'Cerrando…';
+    sb.rpc('entregar_pedido', { p_id: ped.id, p_codigo: cod, p_pago_ok: ped.forma_pago === 'nequi' ? nconf : true }).then(function (r) {
+      var x = r.data;
+      if (x === 'ok') {
+        e.textContent = '';
+        $('f-gan').textContent = fmt(ped.ganancia_motero_cop);
+        $('f-pago').textContent = ped.forma_pago === 'nequi' ? 'Pago por Nequi confirmado.' : 'Pago en efectivo cobrado: ' + fmt(ped.precio_cop) + '.';
+        ver('fin');
+      } else if (x === 'codigo') e.textContent = 'El código no coincide. Pídeselo de nuevo al cliente.';
+      else if (x === 'pago') e.textContent = 'Marca que el pago por Nequi te llegó.';
+      else e.textContent = 'No se pudo cerrar la entrega. Inténtalo de nuevo.';
+    });
+  };
+  $('otra').onclick = function () { ped = null; ver('espera'); buscar(); };
+
+  function deslizante(btn) {
+    btn.style.display = 'none';
+    var s = document.createElement('div'); s.className = 'slide';
+    s.innerHTML = '<div class="t"></div><div class="fl">››</div><div class="h" role="button" aria-label="Desliza para confirmar"><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><circle cx="8" cy="23" r="4.5" fill="none" stroke="#E8590C" stroke-width="2.2"/><circle cx="25" cy="23" r="4.5" fill="none" stroke="#E8590C" stroke-width="2.2"/><path d="M8 23h6l4-8h-5M18 15l3 8M18 15h5l2 8" fill="none" stroke="#E8590C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><rect x="3" y="10" width="9" height="7" rx="1.5" fill="#E8590C"/></svg></div>';
+    btn.parentNode.insertBefore(s, btn.nextSibling);
+    var t = s.querySelector('.t'), hd = s.querySelector('.h');
+    function sync() {
+      t.textContent = btn.textContent.trim();
+      s.style.display = btn.classList.contains('oculto') ? 'none' : 'block';
+    }
+    new MutationObserver(sync).observe(btn, { attributes: true, childList: true, characterData: true, subtree: true });
+    sync();
+    var x0 = 0, dx = 0, on = false;
+    function max() { return s.clientWidth - hd.offsetWidth - 12; }
+    hd.addEventListener('pointerdown', function (e) {
+      on = true; x0 = e.clientX; dx = 0; hd.style.transition = 'none';
+      try { hd.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    hd.addEventListener('pointermove', function (e) {
+      if (!on) return;
+      dx = Math.max(0, Math.min(max(), e.clientX - x0));
+      hd.style.transform = 'translateX(' + dx + 'px)';
+    });
+    function fin() {
+      if (!on) return; on = false;
+      var listo = dx >= max() * 0.85;
+      hd.style.transition = 'transform .2s'; hd.style.transform = 'translateX(0)';
+      if (listo) btn.onclick && btn.onclick();
+    }
+    hd.addEventListener('pointerup', fin);
+    hd.addEventListener('pointercancel', fin);
+  }
+  ['conectar', 'aceptar', 'recogi', 'voy', 'entregar', 'otra'].forEach(function (id) { deslizante($(id)); });
+})();
+</script>
+</body>
+</html>
