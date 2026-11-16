@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ya te llega - Pedir moto</title>
+<link rel="stylesheet" href="ytl.css">
+<style>
+  :root { --n:#E8590C; --g:#1F2937; --c:#FFF6E5; --b:#D1D5DB; --m:#5F5E5A; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; }
+  body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--g); background:#EDEAE0; }
+  .app { max-width:460px; margin:0 auto; min-height:100vh; background:#fff; position:relative; display:flex; flex-direction:column; }
+  .mapa { position:relative; height:170px; background:#EDEAE0; flex:none; }
+  .mapa svg { display:block; }
+  .cab { position:absolute; top:10px; left:10px; right:10px; background:#fff; border-radius:14px; padding:8px 12px; display:flex; align-items:center; gap:10px; box-shadow:0 1px 4px rgba(0,0,0,.12); }
+  .cab .pin { width:34px; height:34px; border-radius:50%; background:var(--n); display:flex; align-items:center; justify-content:center; flex:none; }
+  .cab b { font-size:15px; font-weight:600; display:block; }
+  .cab small { font-size:12px; color:var(--m); }
+  .hoja { flex:1; margin-top:-16px; background:#fff; border-radius:20px 20px 0 0; padding:12px 16px 90px; position:relative; }
+  .asa { width:36px; height:4px; background:#D3D1C7; border-radius:2px; margin:0 auto 12px; }
+  h1 { font-size:19px; font-weight:600; margin:0 0 10px; }
+  .chips { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; }
+  .chip { white-space:nowrap; padding:9px 14px; border-radius:999px; border:0; background:#F1EFE8; color:var(--g); font-size:14px; cursor:pointer; font-family:inherit; }
+  .chip.sel { background:var(--n); color:#fff; }
+  .dirs { background:#F1EFE8; border-radius:14px; padding:6px; margin-top:12px; }
+  .fila { background:#fff; border:1px solid transparent; border-radius:12px; padding:8px 12px; margin-bottom:4px; display:flex; gap:10px; align-items:flex-start; }
+  .fila.f { border:2px solid var(--n); }
+  .pt { width:10px; height:10px; border-radius:50%; margin-top:14px; flex:none; }
+  .fila input { width:100%; border:0; outline:0; font-size:15px; padding:6px 0; background:transparent; color:var(--g); font-family:inherit; }
+  .fila input + input { border-top:1px solid #EEE; font-size:14px; }
+  .pago { margin-top:14px; }
+  .pago p { margin:0 0 2px; font-size:14px; font-weight:600; }
+  .cas { display:inline-flex; align-items:center; gap:8px; padding:8px 22px 8px 0; font-size:15px; cursor:pointer; }
+  .caja { width:22px; height:22px; border:2px solid var(--g); border-radius:4px; background:#fff; color:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; line-height:1; }
+  .cas.sel .caja { background:var(--n); border-color:var(--n); }
+  .btn { width:100%; margin-top:10px; border:0; border-radius:14px; background:var(--n); color:#fff; padding:15px 16px; font-size:16px; font-weight:600; display:flex; justify-content:space-between; cursor:pointer; font-family:inherit; }
+  .btn:disabled { opacity:.6; }
+  .err { color:#A32D2D; font-size:14px; min-height:20px; margin-top:8px; }
+  .ok { display:none; margin-top:10px; background:var(--c); border:1px solid var(--n); border-radius:12px; padding:12px; font-size:14px; line-height:1.5; }
+  .nota { font-size:12px; color:var(--m); text-align:center; margin-top:14px; }
+  .pag { display:none; }
+  .pag.on { display:block; }
+  .ped { background:#F1EFE8; border-radius:12px; padding:12px; margin-bottom:8px; font-size:14px; line-height:1.5; }
+  .ped .est { display:inline-block; font-size:12px; font-weight:700; padding:3px 10px; border-radius:999px; background:var(--c); color:var(--n); margin-bottom:4px; }
+  .ped .est.v { background:#EAF3DE; color:#27500A; } .ped .est.r { background:#FCEBEB; color:#791F1F; }
+  .ped .cod { margin-top:6px; background:#fff; border:2px dashed var(--n); border-radius:10px; padding:8px; text-align:center; font-size:14px; }
+  .ped .cod b { display:block; font-size:28px; letter-spacing:6px; }
+  .ped button { margin-top:8px; border:1.5px solid #B91C1C; color:#B91C1C; background:#fff; border-radius:10px; padding:8px 12px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .vacio { color:var(--m); font-size:14px; padding:20px 0; text-align:center; }
+  nav { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:460px; background:#fff; border-top:1px solid #E5E7EB; display:flex; justify-content:space-around; padding:6px 0 10px; }
+  nav button { border:0; background:transparent; color:var(--m); font-size:12px; padding:6px 18px; border-radius:12px; cursor:pointer; font-family:inherit; display:flex; flex-direction:column; align-items:center; gap:2px; }
+  nav button.on { background:var(--c); color:var(--n); }
+  nav svg { width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  #reg { display:none; padding:16px 16px 40px; }
+  #reg h1 { font-size:22px; font-weight:700; margin:0 0 4px; }
+  #reg .sub { font-size:14px; color:#6B7280; margin:0 0 14px; }
+  #reg .sec { background:var(--c); border-radius:16px; padding:14px; margin-bottom:12px; }
+  #reg .sec h2 { font-size:16px; margin:0 0 4px; font-weight:700; }
+  #reg label { display:block; font-size:14px; font-weight:600; margin:10px 0 4px; }
+  #reg input[type=text], #reg input[type=tel], #reg input[type=email] { width:100%; border:1.5px solid #D1D5DB; border-radius:12px; padding:12px; font-size:16px; background:#fff; color:var(--g); font-family:inherit; }
+  #reg .cas { display:flex; align-items:flex-start; gap:10px; padding:8px 0; font-size:14px; line-height:1.35; }
+  #reg .caja { flex:none; }
+  #reg .btn2 { width:100%; border:0; border-radius:16px; background:var(--n); color:#fff; padding:17px; font-size:18px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:6px; }
+  #reg .btn2:disabled { opacity:.6; }
+  #reg .err { color:#B91C1C; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div id="auth" style="display:none"></div>
+  <div id="cargando" class="carga">Cargando…</div>
+
+  <div id="reg">
+    <h1><span style="color:#E8590C">Ya</span>Te<span style="color:#E8590C">Llega</span> · Crea tu cuenta</h1>
+    <p class="sub">Para pedir tu moto te registras una sola vez.</p>
+    <div class="sec">
+      <h2>Tus datos</h2>
+      <label for="nombre">Nombre completo</label>
+      <input type="text" id="nombre" autocomplete="name" placeholder="Ej. María Gómez">
+      <label for="cel">Celular (WhatsApp)</label>
+      <input type="tel" id="cel" inputmode="numeric" autocomplete="tel" placeholder="3001234567">
+      <label for="correo">Correo</label>
+      <input type="email" id="correo" autocomplete="email" placeholder="nombre@correo.com">
+    </div>
+    <div class="sec">
+      <h2>Dónde vives</h2>
+      <label for="dir">Dirección de residencia</label>
+      <input type="text" id="dir" autocomplete="street-address" placeholder="Ej. Cra 5 # 10-20, apto 301">
+      <label for="barrio">Barrio</label>
+      <input type="text" id="barrio" placeholder="Ej. Granada">
+      <label for="ciudad">Ciudad</label>
+      <input type="text" id="ciudad" value="Cali">
+    </div>
+    <div class="cas" id="acepto" role="checkbox" aria-checked="false" tabindex="0"><span class="caja"></span><span>Acepto los términos y que usen mis datos personales, según la ley de Colombia.</span></div>
+    <button class="btn2" id="crear" type="button">Crear mi cuenta</button>
+    <div class="err" id="rerr" role="alert"></div>
+    <p style="text-align:center"><button class="salir" type="button" onclick="salir()">Cerrar sesión</button></p>
+  </div>
+
+  <div id="main" style="display:none">
+    <div class="mapa">
+      <svg width="100%" height="170" viewBox="0 0 340 170" preserveAspectRatio="none" aria-hidden="true">
+        <rect width="340" height="170" fill="#EDEAE0"/>
+        <path d="M0 45 L340 80 M0 125 L340 100 M80 0 L120 170 M230 0 L200 170" stroke="#fff" stroke-width="7" fill="none"/>
+        <path d="M0 80 L340 45 M155 0 L178 170" stroke="#fff" stroke-width="3" fill="none"/>
+        <rect x="255" y="105" width="70" height="45" fill="#C0DD97" opacity=".6"/>
+        <circle cx="170" cy="88" r="50" fill="#E8590C" opacity=".15" stroke="#E8590C" stroke-width="2" stroke-dasharray="6 4"/>
+      </svg>
+      <div class="cab">
+        <span class="pin"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M12 22s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z"/><circle cx="12" cy="10" r="3" fill="#E8590C"/></svg></span>
+        <div><b>Ya te llega</b><small>Moto en Cali, 7 a. m. a 10 p. m.</small></div>
+      </div>
+    </div>
+
+    <div class="hoja">
+      <div class="asa"></div>
+
+      <div class="pag on" id="p-pedir">
+        <h1>¿Qué llevamos hoy?</h1>
+        <div class="chips" id="chips">
+          <button class="chip sel" type="button">Paquete</button>
+          <button class="chip" type="button">Medicamentos</button>
+          <button class="chip" type="button">Comida</button>
+          <button class="chip" type="button">Productos</button>
+        </div>
+
+        <div class="dirs">
+          <div class="fila f" id="f1">
+            <span class="pt" style="background:var(--n)"></span>
+            <div style="flex:1">
+              <input type="text" class="dir" placeholder="¿Dónde lo recogemos? Ej. Cra 5 # 10-20" autocomplete="off">
+              <input type="text" class="bar" placeholder="Barrio, ej. Granada" autocomplete="off">
+            </div>
+          </div>
+          <div class="fila" id="f2">
+            <span class="pt" style="background:var(--g)"></span>
+            <div style="flex:1">
+              <input type="text" class="dir" placeholder="¿Dónde lo entregamos? Ej. Calle 5 # 38-10" autocomplete="off">
+              <input type="text" class="bar" placeholder="Barrio, ej. San Fernando" autocomplete="off">
+            </div>
+          </div>
+        </div>
+
+        <div class="pago">
+          <p>¿Cómo vas a pagar?</p>
+          <span class="cas" data-p="efectivo" role="checkbox" aria-checked="false" tabindex="0"><span class="caja"></span>Efectivo</span>
+          <span class="cas" data-p="nequi" role="checkbox" aria-checked="false" tabindex="0"><span class="caja"></span>Nequi</span>
+        </div>
+
+        <button class="btn" id="pedir" type="button"><span>Pedir moto ahora</span><span>$7.500</span></button>
+        <div class="err" id="err" role="alert"></div>
+        <div class="ok" id="ok"></div>
+        <p class="nota">Versión de prueba: precio fijo de $7.500 por pedido mientras armamos las tarifas por distancia.</p>
+      </div>
+
+      <div class="pag" id="p-pedidos">
+        <h1>Mis pedidos</h1>
+        <div id="lista"><div class="vacio">Todavía no tienes pedidos.</div></div>
+      </div>
+
+      <div class="pag" id="p-cuenta">
+        <h1>Cuenta</h1>
+        <div class="ped" id="datos"></div>
+        <p style="text-align:center"><button class="salir" type="button" onclick="salir()">Cerrar sesión</button></p>
+      </div>
+    </div>
+
+    <nav>
+      <button class="on" data-t="pedir" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>Pedir</button>
+      <button data-t="pedidos" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg>Mis pedidos</button>
+      <button data-t="cuenta" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Cuenta</button>
+    </nav>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="ytl.js"></script>
+<script>
+(function () {
+  var user = null, cli = null, pago = null, servicio = 'Paquete', enviando = false;
+  var SERV = { 'Paquete': 'paquete', 'Medicamentos': 'medicamentos', 'Comida': 'comida', 'Productos': 'productos' };
+  var SNOM = { paquete: 'Paquete', medicamentos: 'Medicamentos', comida: 'Comida', productos: 'Productos' };
+  var ETQ = { nuevo: 'Buscando moto', aceptado: 'Moto asignada', en_camino: 'La moto va a recoger', en_recogida: 'La moto llegó a recoger', recogido: 'Pedido recogido', en_entrega: 'La moto va a entregar', entregado: 'Entregado', cancelado: 'Cancelado' };
+
+  entrar($('auth'), '<span style="color:#E8590C">Ya</span>Te<span style="color:#E8590C">Llega</span> · Pedir moto', function (u) {
+    user = u;
+    $('cargando').style.display = 'block';
+    cargarCliente();
+  });
+  setTimeout(function () { if ($('auth').style.display === 'block') $('cargando').style.display = 'none'; }, 800);
+
+  function cargarCliente() {
+    $('auth').style.display = 'none';
+    sb.from('clientes').select('*').eq('user_id', user.id).maybeSingle().then(function (r) {
+      $('cargando').style.display = 'none';
+      if (r.error) { $('cargando').style.display = 'block'; $('cargando').textContent = errMsg(r.error); return; }
+      if (r.data) { cli = r.data; iniciar(); }
+      else { $('reg').style.display = 'block'; $('correo').value = user.email || ''; }
+    });
+  }
+
+  var acepto = false;
+  casilla($('acepto'), function (s) { acepto = s; $('rerr').textContent = ''; });
+  function v(i) { return $(i).value.trim(); }
+  $('crear').addEventListener('click', function () {
+    var e = $('rerr');
+    if (v('nombre').length < 5) { e.textContent = 'Escribe tu nombre completo.'; return; }
+    if (!/^3\d{9}$/.test(v('cel'))) { e.textContent = 'El celular tiene 10 números y empieza por 3.'; return; }
+    if (!/^\S+@\S+\.\S+$/.test(v('correo'))) { e.textContent = 'Escribe un correo válido.'; return; }
+    if (v('dir').length < 5) { e.textContent = 'Escribe tu dirección de residencia.'; return; }
+    if (v('barrio').length < 3) { e.textContent = 'Escribe tu barrio.'; return; }
+    if (v('ciudad').length < 3) { e.textContent = 'Escribe tu ciudad.'; return; }
+    if (!acepto) { e.textContent = 'Marca que aceptas los términos y el uso de tus datos.'; return; }
+    e.textContent = 'Guardando…'; $('crear').disabled = true;
+    sb.from('clientes').insert({ user_id: user.id, nombre: v('nombre'), celular: v('cel'), correo: v('correo'), direccion: v('dir'), barrio: v('barrio'), ciudad: v('ciudad'), acepto_terminos: true }).select().single().then(function (r) {
+      $('crear').disabled = false;
+      if (r.error) { e.textContent = errMsg(r.error); return; }
+      cli = r.data; $('reg').style.display = 'none'; iniciar();
+    });
+  });
+
+  function iniciar() {
+    $('main').style.display = 'block';
+    $('datos').innerHTML = '<b>' + esc(cli.nombre) + '</b><br>' + esc(cli.celular) + '<br>' + esc(cli.correo) + '<br>' + esc(cli.direccion) + ', ' + esc(cli.barrio) + ', ' + esc(cli.ciudad);
+    cargarPedidos();
+    setInterval(function () { if (!document.hidden) cargarPedidos(); }, 5000);
+  }
+
+  document.querySelectorAll('#chips .chip').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#chips .chip').forEach(function (x) { x.classList.remove('sel'); });
+      b.classList.add('sel');
+      servicio = b.textContent;
+    });
+  });
+
+  ['f1', 'f2'].forEach(function (id) {
+    var f = $(id);
+    f.querySelectorAll('input').forEach(function (i) {
+      i.addEventListener('focus', function () {
+        document.querySelectorAll('.fila').forEach(function (x) { x.classList.remove('f'); });
+        f.classList.add('f');
+      });
+    });
+  });
+
+  var cas = document.querySelectorAll('.pago .cas');
+  function marcar(el) {
+    var ya = el.classList.contains('sel');
+    cas.forEach(function (x) {
+      x.classList.remove('sel');
+      x.setAttribute('aria-checked', 'false');
+      x.querySelector('.caja').textContent = '';
+    });
+    pago = null;
+    if (!ya) {
+      el.classList.add('sel');
+      el.setAttribute('aria-checked', 'true');
+      el.querySelector('.caja').textContent = '✓';
+      pago = el.dataset.p;
+    }
+    $('err').textContent = '';
+  }
+  cas.forEach(function (el) {
+    el.addEventListener('click', function () { marcar(el); });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); marcar(el); }
+    });
+  });
+
+  function val(id, c) { return $(id).querySelector('.' + c).value.trim(); }
+
+  $('pedir').addEventListener('click', function () {
+    var err = $('err'), ok = $('ok');
+    ok.style.display = 'none';
+    if (enviando) return;
+    if (val('f1', 'dir').length < 3 || val('f2', 'dir').length < 3) {
+      err.textContent = 'Escribe la dirección de recogida y la de entrega.';
+      return;
+    }
+    if (!pago) {
+      err.textContent = 'Marca cómo vas a pagar: efectivo o Nequi.';
+      return;
+    }
+    err.textContent = 'Enviando tu pedido…';
+    enviando = true; $('pedir').disabled = true;
+    sb.from('pedidos').insert({
+      cliente_id: cli.id, servicio: SERV[servicio],
+      direccion_recogida: val('f1', 'dir'), barrio_recogida: val('f1', 'bar') || null,
+      direccion_entrega: val('f2', 'dir'), barrio_entrega: val('f2', 'bar') || null,
+      forma_pago: pago, precio_cop: 7500, ganancia_motero_cop: 6375
+    }).then(function (r) {
+      enviando = false; $('pedir').disabled = false;
+      if (r.error) { err.textContent = errMsg(r.error); return; }
+      err.textContent = '';
+      ok.textContent = pago === 'nequi'
+        ? 'Listo, estamos buscando tu moto. Pagas por Nequi: el motero confirma que le llegó el pago y con tu código cierra la entrega.'
+        : 'Listo, estamos buscando tu moto. Pagas en efectivo al motero cuando llegue.';
+      ok.style.display = 'block';
+      cargarPedidos();
+      setTimeout(function () { irA('pedidos'); }, 1200);
+    });
+  });
+
+  function activo(p) { return ['nuevo', 'aceptado', 'en_camino', 'en_recogida', 'recogido', 'en_entrega'].indexOf(p.estado) >= 0; }
+  function cargarPedidos() {
+    if (!cli) return;
+    sb.from('pedidos').select('*').eq('cliente_id', cli.id).order('creado_en', { ascending: false }).limit(20).then(function (r) {
+      if (r.error) return;
+      var ps = r.data || [];
+      var ids = ps.filter(activo).map(function (p) { return p.id; });
+      var q = ids.length ? sb.from('codigos_entrega').select('*').in('pedido_id', ids) : Promise.resolve({ data: [] });
+      q.then(function (c) {
+        var cods = {};
+        (c.data || []).forEach(function (x) { cods[x.pedido_id] = x.codigo; });
+        pintar(ps, cods);
+      });
+    });
+  }
+  function pintar(ps, cods) {
+    var l = $('lista');
+    if (!ps.length) { l.innerHTML = '<div class="vacio">Todavía no tienes pedidos.</div>'; return; }
+    l.innerHTML = ps.map(function (p) {
+      var cl = p.estado === 'entregado' ? ' v' : p.estado === 'cancelado' ? ' r' : '';
+      var cod = (activo(p) && cods[p.id]) ? '<div class="cod">Tu código de entrega<b>' + esc(cods[p.id]) + '</b>Dáselo al motero cuando te entregue.</div>' : '';
+      var can = p.estado === 'nuevo' ? '<br><button type="button" data-can="' + p.id + '">Cancelar pedido</button>' : '';
+      return '<div class="ped"><span class="est' + cl + '">' + esc(ETQ[p.estado] || p.estado) + '</span><br><b>' + esc(SNOM[p.servicio] || p.servicio) + '</b> · ' + (p.forma_pago === 'nequi' ? 'Nequi' : 'Efectivo') + ' · ' + fmt(p.precio_cop) +
+        '<br>Recoger: ' + esc(p.direccion_recogida) + (p.barrio_recogida ? ', ' + esc(p.barrio_recogida) : '') +
+        '<br>Entregar: ' + esc(p.direccion_entrega) + (p.barrio_entrega ? ', ' + esc(p.barrio_entrega) : '') + cod + can + '</div>';
+    }).join('');
+  }
+  document.addEventListener('click', function (e) {
+    var id = e.target && e.target.dataset && e.target.dataset.can;
+    if (!id) return;
+    e.target.disabled = true;
+    sb.rpc('cancelar_pedido', { p_id: id }).then(function () { cargarPedidos(); });
+  });
+
+  function irA(t) {
+    document.querySelectorAll('nav button').forEach(function (x) { x.classList.toggle('on', x.dataset.t === t); });
+    document.querySelectorAll('.pag').forEach(function (p) { p.classList.remove('on'); });
+    $('p-' + t).classList.add('on');
+    if (t === 'pedidos') cargarPedidos();
+  }
+  document.querySelectorAll('nav button').forEach(function (b) {
+    b.addEventListener('click', function () { irA(b.dataset.t); });
+  });
+})();
+</script>
+</body>
+</html>
