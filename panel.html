@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ya te llega - Panel</title>
+<link rel="stylesheet" href="ytl.css">
+<style>
+  :root { --n:#E8590C; --g:#1F2937; --c:#FFF6E5; --m:#6B7280; --r:#FCEBEB; --rt:#791F1F; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--g); background:#EDEAE0; }
+  .app { max-width:640px; margin:0 auto; min-height:100vh; background:#fff; padding:14px 14px 90px; }
+  .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .top b { font-size:20px; font-weight:700; }
+  .abierto { font-size:12px; background:#EAF3DE; color:#27500A; padding:4px 10px; border-radius:999px; font-weight:600; }
+  .grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; }
+  .met { background:var(--c); border-radius:14px; padding:12px; }
+  .met small { font-size:12px; color:var(--m); display:block; }
+  .met b { font-size:24px; font-weight:700; }
+  .met.rojo { background:var(--r); } .met.rojo small, .met.rojo b { color:var(--rt); }
+  h2 { font-size:17px; margin:18px 0 8px; font-weight:700; }
+  .row { border:1px solid #E5E7EB; border-radius:14px; padding:12px; margin-bottom:8px; font-size:14px; line-height:1.45; }
+  .row .t { display:flex; justify-content:space-between; gap:8px; font-weight:600; }
+  .row .s { color:var(--m); margin-top:3px; }
+  .bd { font-size:12px; font-weight:700; padding:3px 10px; border-radius:999px; white-space:nowrap; align-self:flex-start; }
+  .bd.n { background:var(--c); color:var(--n); } .bd.a { background:#FAEEDA; color:#854F0B; } .bd.v { background:#EAF3DE; color:#27500A; } .bd.r { background:var(--r); color:var(--rt); } .bd.g { background:#F1EFE8; color:#444441; }
+  .inc { background:var(--r); border:0; color:#501313; }
+  .b { border:0; border-radius:12px; padding:11px 14px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .b.p { background:var(--n); color:#fff; } .b.s { background:#F3F4F6; color:var(--g); } .b.o { background:#fff; color:var(--n); border:1.5px solid var(--n); }
+  .acc { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  label { display:block; font-size:14px; font-weight:600; margin:10px 0 4px; }
+  input, select, textarea { width:100%; border:1.5px solid #D1D5DB; border-radius:12px; padding:11px; font-size:16px; font-family:inherit; color:var(--g); background:#fff; }
+  .form { background:var(--c); border-radius:16px; padding:14px; margin-bottom:10px; display:none; }
+  .pag { display:none; } .pag.on { display:block; }
+  .bar { display:flex; align-items:flex-end; gap:8px; height:120px; margin-top:8px; }
+  .bar div { flex:1; background:var(--n); border-radius:6px 6px 0 0; position:relative; min-height:4px; }
+  .bar span { position:absolute; bottom:-18px; left:0; right:0; text-align:center; font-size:11px; color:var(--m); }
+  .bar em { position:absolute; top:-16px; left:0; right:0; text-align:center; font-size:11px; font-style:normal; }
+  .vacio { color:var(--m); text-align:center; padding:18px 0; font-size:14px; }
+  .nota { font-size:12px; color:var(--m); text-align:center; margin-top:16px; }
+  .docs a { display:inline-block; margin:6px 8px 0 0; color:var(--n); font-weight:600; font-size:14px; }
+  nav { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid #E5E7EB; display:flex; justify-content:center; padding:6px 4px calc(8px + env(safe-area-inset-bottom)); }
+  nav .in { display:flex; width:100%; max-width:640px; justify-content:space-around; }
+  nav button { border:0; background:transparent; color:var(--m); font-size:11px; font-weight:600; padding:6px 8px; border-radius:12px; cursor:pointer; font-family:inherit; display:flex; flex-direction:column; align-items:center; gap:2px; position:relative; }
+  nav button.on { background:var(--c); color:var(--n); }
+  nav svg { width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  nav .pt { position:absolute; top:2px; right:6px; background:#B91C1C; color:#fff; border-radius:999px; font-size:10px; padding:1px 5px; display:none; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="auth" style="display:none"></div>
+  <div id="carga" class="carga">Cargando…</div>
+  <div id="noadmin" style="display:none">
+    <div class="row inc"><b>Esta cuenta no es de administrador.</b><br>Pídele al dueño de Ya te llega que te agregue. Tu código de usuario es: <span id="uid" style="word-break:break-all"></span></div>
+    <p style="text-align:center"><button class="salir" type="button" onclick="salir()">Cerrar sesión</button></p>
+  </div>
+
+  <div id="panel" style="display:none">
+  <div class="top"><b><span style="color:#E8590C">Ya</span>Te<span style="color:#E8590C">Llega</span> · Panel</b><span><span class="abierto">Abierto</span> <button class="salir" type="button" onclick="salir()">Salir</button></span></div>
+
+  <div class="pag on" id="p-vivo">
+    <div class="grid">
+      <div class="met"><small>Pedidos hoy</small><b id="m-ped">0</b></div>
+      <div class="met"><small>Ganancia hoy (Ya te llega)</small><b id="m-gan">$0</b></div>
+      <div class="met"><small>Moteros conectados</small><b id="m-con">0</b></div>
+      <div class="met rojo"><small>Incidencias abiertas</small><b id="m-inc">0</b></div>
+    </div>
+    <h2>En vivo</h2>
+    <div id="v-vivo"></div>
+    <h2>Moteros por aprobar</h2>
+    <div id="v-pend"></div>
+    <h2>Incidencias recientes</h2>
+    <div id="v-inc"></div>
+  </div>
+
+  <div class="pag" id="p-moteros">
+    <h2 style="margin-top:4px">Moteros</h2>
+    <div id="l-mot"></div>
+  </div>
+
+  <div class="pag" id="p-clientes">
+    <h2 style="margin-top:4px">Clientes</h2>
+    <div id="l-cli"></div>
+  </div>
+
+  <div class="pag" id="p-inc">
+    <h2 style="margin-top:4px">Incidencias</h2>
+    <button class="b p" id="nuevaI" type="button">Registrar incidencia</button>
+    <div class="form" id="form" style="margin-top:10px">
+      <label for="tipo">Qué pasó</label>
+      <select id="tipo">
+        <option>Llegó tarde</option><option>Maltrato del motero</option><option>Maltrato del cliente</option>
+        <option>Mala calificación</option><option>Pedido no tomado</option><option>Pedido cancelado</option><option>Otro</option>
+      </select>
+      <label for="ref">Pedido o persona</label>
+      <input type="text" id="ref" placeholder="Ej. pedido de Granada, motero Carlos">
+      <label for="det">Detalle</label>
+      <textarea id="det" rows="3" placeholder="Cuenta qué pasó"></textarea>
+      <div class="acc"><button class="b p" id="guardarI" type="button">Guardar</button><button class="b s" id="cancelarI" type="button">Cancelar</button></div>
+    </div>
+    <div style="margin-top:12px" id="l-inc"></div>
+  </div>
+
+  <div class="pag" id="p-cifras">
+    <h2 style="margin-top:4px">Cifras de la semana</h2>
+    <div class="grid">
+      <div class="met"><small>Pedidos de la semana</small><b id="c-ped">0</b></div>
+      <div class="met"><small>Entregados</small><b id="c-ent">0%</b></div>
+      <div class="met"><small>Ganancia de la semana (Ya te llega)</small><b id="c-gan">$0</b></div>
+      <div class="met"><small>Calificación promedio</small><b>—</b></div>
+    </div>
+    <h2>Pedidos por día</h2>
+    <div class="bar" id="c-bar" style="margin-bottom:26px"></div>
+    <p class="nota">La calificación de los clientes se activa en una próxima versión.</p>
+  </div>
+  </div>
+</div>
+
+<nav id="nav" style="display:none"><div class="in">
+  <button class="on" data-t="vivo" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>En vivo</button>
+  <button data-t="moteros" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17h5l3-6h-4M14 11l2 6M14 11h4"/></svg>Moteros<span class="pt" id="pt-mot"></span></button>
+  <button data-t="clientes" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c.8-3.5 3.5-5 7-5s6.2 1.5 7 5"/><circle cx="17" cy="9" r="2.5"/><path d="M18 14c2.5.3 3.6 1.8 4 4"/></svg>Clientes</button>
+  <button data-t="inc" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>Incidencias<span class="pt" id="pt-inc"></span></button>
+  <button data-t="cifras" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Cifras</button>
+</div></nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="ytl.js"></script>
+<script>
+(function () {
+  var D = { mot: [], cli: [], ped: [], inc: [] };
+  var SNOM = { paquete: 'Paquete', medicamentos: 'Medicamentos', comida: 'Comida', productos: 'Productos' };
+  var ETQ = { nuevo: ['Sin moto', 'a'], aceptado: ['Asignado', 'n'], en_camino: ['En camino', 'n'], en_recogida: ['Recogiendo', 'n'], recogido: ['Recogido', 'n'], en_entrega: ['Entregando', 'n'], entregado: ['Entregado', 'v'], cancelado: ['Cancelado', 'g'] };
+  var DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+  entrar($('auth'), '<span style="color:#E8590C">Ya</span>Te<span style="color:#E8590C">Llega</span> · Panel', function (u) {
+    $('auth').style.display = 'none';
+    $('carga').style.display = 'block';
+    sb.from('administradores').select('user_id').eq('user_id', u.id).maybeSingle().then(function (r) {
+      $('carga').style.display = 'none';
+      if (!r.data) { $('uid').textContent = u.id; $('noadmin').style.display = 'block'; return; }
+      $('panel').style.display = 'block'; $('nav').style.display = 'block';
+      cargar();
+      setInterval(function () { if (!document.hidden) cargar(); }, 10000);
+    });
+  });
+  setTimeout(function () { if ($('auth').style.display === 'block') $('carga').style.display = 'none'; }, 800);
+
+  function cargar() {
+    Promise.all([
+      sb.from('moteros').select('*').order('creado_en', { ascending: false }),
+      sb.from('clientes').select('*').order('creado_en', { ascending: false }),
+      sb.from('pedidos').select('*').order('creado_en', { ascending: false }).limit(500),
+      sb.from('incidencias').select('*').order('creado_en', { ascending: false }).limit(200)
+    ]).then(function (r) {
+      D.mot = r[0].data || []; D.cli = r[1].data || []; D.ped = r[2].data || []; D.inc = r[3].data || [];
+      render();
+    });
+  }
+  function dia0(d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); }
+  function comision(p) { return p.precio_cop - p.ganancia_motero_cop; }
+  function fechaTxt(x) { return x ? x.split('-').reverse().join('/') : null; }
+  function vig(x) { if (!x) return 'sin fecha'; var ok = new Date(x + 'T00:00:00') >= new Date(new Date().setHours(0, 0, 0, 0)); return (ok ? 'vigente hasta ' : 'VENCIDO el ') + fechaTxt(x); }
+  function nomMot(id) { var m = D.mot.filter(function (x) { return x.id === id; })[0]; return m ? m.nombre : '—'; }
+  function nomCli(id) { var c = D.cli.filter(function (x) { return x.id === id; })[0]; return c ? c.nombre : '—'; }
+
+  function render() {
+    var hoy = dia0(new Date());
+    var pHoy = D.ped.filter(function (p) { return dia0(p.creado_en) === hoy; });
+    var gHoy = pHoy.filter(function (p) { return p.estado === 'entregado'; }).reduce(function (a, p) { return a + comision(p); }, 0);
+    var pend = D.mot.filter(function (m) { return m.estado === 'pendiente'; });
+    var abiertas = D.inc.filter(function (i) { return !i.resuelta; });
+    $('m-ped').textContent = pHoy.length;
+    $('m-gan').textContent = fmt(gHoy);
+    $('m-con').textContent = D.mot.filter(function (m) { return m.estado === 'aprobado' && m.conectado; }).length;
+    $('m-inc').textContent = abiertas.length;
+    $('pt-inc').textContent = abiertas.length; $('pt-inc').style.display = abiertas.length ? 'block' : 'none';
+    $('pt-mot').textContent = pend.length; $('pt-mot').style.display = pend.length ? 'block' : 'none';
+
+    var vivos = D.ped.filter(function (p) { return p.estado !== 'entregado' && p.estado !== 'cancelado'; }).slice(0, 20);
+    $('v-vivo').innerHTML = vivos.length ? vivos.map(function (p) {
+      var e = ETQ[p.estado];
+      return '<div class="row"><div class="t"><span>' + esc(SNOM[p.servicio] || p.servicio) + ' · ' + esc(p.barrio_recogida || p.direccion_recogida) + ' a ' + esc(p.barrio_entrega || p.direccion_entrega) + '</span><span class="bd ' + e[1] + '">' + e[0] + '</span></div><div class="s">' +
+        (p.motero_id ? 'Moto: ' + esc(nomMot(p.motero_id)) : 'Nadie lo tomó') + ' · ' + (p.forma_pago === 'nequi' ? 'Nequi' : 'Efectivo') + ' · ' + fmt(p.precio_cop) + '<br>Cliente: ' + esc(nomCli(p.cliente_id)) + '</div></div>';
+    }).join('') : '<div class="vacio">No hay pedidos en curso.</div>';
+
+    $('v-pend').innerHTML = pend.length ? pend.map(function (m) {
+      return '<div class="row"><div class="t"><span>' + esc(m.nombre) + '</span><span class="bd a">Por aprobar</span></div><div class="s">SOAT ' + esc(vig(m.soat_vence)) + ' · placa ' + esc(m.placa) + '</div><div class="acc"><button class="b o" data-rev="1" type="button">Revisar</button></div></div>';
+    }).join('') : '<div class="vacio">No hay moteros por aprobar.</div>';
+
+    $('v-inc').innerHTML = abiertas.length ? abiertas.slice(0, 3).map(function (i) {
+      return '<div class="row inc"><b>' + esc(i.tipo) + '</b> · ' + esc(i.referencia || '') + '<br>' + esc(i.descripcion) + '</div>';
+    }).join('') : '<div class="vacio">No hay incidencias abiertas.</div>';
+
+    $('l-mot').innerHTML = D.mot.length ? D.mot.map(function (m) {
+      var b = m.estado === 'aprobado' ? '<span class="bd v">Activo</span>' : m.estado === 'pendiente' ? '<span class="bd a">Por aprobar</span>' : m.estado === 'suspendido' ? '<span class="bd r">Suspendido</span>' : '<span class="bd r">Rechazado</span>';
+      var acc = '<div class="acc">';
+      if (m.estado !== 'aprobado') acc += '<button class="b p" data-ok="' + m.id + '" type="button">Aprobar</button>';
+      if (m.estado === 'pendiente') acc += '<button class="b s" data-no="' + m.id + '" type="button">Rechazar</button>';
+      if (m.estado === 'aprobado') acc += '<button class="b s" data-sus="' + m.id + '" type="button">Suspender</button>';
+      acc += '<button class="b o" data-docs="' + m.id + '" type="button">Ver documentos</button></div><div class="docs" id="docs-' + m.id + '"></div>';
+      return '<div class="row"><div class="t"><span>' + esc(m.nombre) + '</span>' + b + '</div><div class="s">Cédula ' + esc(m.cedula) + ' · cel ' + esc(m.celular) + ' · Nequi ' + esc(m.nequi || '—') +
+        '<br>' + esc(m.direccion) + ', ' + esc(m.barrio) + ', ' + esc(m.ciudad) +
+        '<br>Moto: ' + esc(m.marca || '') + ' ' + esc(m.modelo || '') + ' ' + esc(m.anio) + ' ' + esc(m.color || '') + ' · placa ' + esc(m.placa) +
+        '<br>SOAT ' + esc(vig(m.soat_vence)) + (m.foto_soat ? ' (con foto)' : '') +
+        '<br>Tecnomecánica ' + (m.tecnomecanica_vence ? esc(vig(m.tecnomecanica_vence)) : (m.foto_tecnomecanica ? 'con foto' : 'no aplica')) +
+        '<br>Licencia ' + esc(vig(m.licencia_vence)) + '</div>' + acc + '</div>';
+    }).join('') : '<div class="vacio">Todavía no hay moteros registrados.</div>';
+
+    $('l-cli').innerHTML = D.cli.length ? D.cli.map(function (c) {
+      var n = D.ped.filter(function (p) { return p.cliente_id === c.id; }).length;
+      return '<div class="row"><div class="t"><span>' + esc(c.nombre) + '</span><span class="bd g">' + n + (n === 1 ? ' pedido' : ' pedidos') + '</span></div><div class="s">' + esc(c.celular) + ' · ' + esc(c.barrio) + ', ' + esc(c.ciudad) + '<br>' + esc(c.correo) + '</div></div>';
+    }).join('') : '<div class="vacio">Todavía no hay clientes registrados.</div>';
+
+    $('l-inc').innerHTML = D.inc.length ? D.inc.map(function (i) {
+      var cierre = !i.resuelta ? '<div class="acc"><button class="b o" data-res="' + i.id + '" type="button">Marcar resuelta</button></div>' : '';
+      return '<div class="row' + (!i.resuelta ? ' inc' : '') + '"><div class="t"><span>' + esc(i.tipo) + '</span><span class="bd ' + (!i.resuelta ? 'r' : 'v') + '">' + (!i.resuelta ? 'Abierta' : 'Resuelta') + '</span></div><div class="s" style="color:inherit">' + esc(i.referencia || '') + ' · ' + new Date(i.creado_en).toLocaleDateString('es-CO') + '<br>' + esc(i.descripcion) + '</div>' + cierre + '</div>';
+    }).join('') : '<div class="vacio">Todavía no hay incidencias.</div>';
+
+    cifras();
+  }
+
+  function cifras() {
+    var dias = [], hoy = dia0(new Date());
+    for (var k = 6; k >= 0; k--) { var d = new Date(hoy); d.setDate(d.getDate() - k); dias.push(d); }
+    var desde = dias[0].getTime();
+    var sem = D.ped.filter(function (p) { return dia0(p.creado_en) >= desde; });
+    var entr = sem.filter(function (p) { return p.estado === 'entregado'; });
+    $('c-ped').textContent = sem.length;
+    $('c-ent').textContent = sem.length ? Math.round(entr.length / sem.length * 100) + '%' : '0%';
+    $('c-gan').textContent = fmt(entr.reduce(function (a, p) { return a + comision(p); }, 0));
+    var cuentas = dias.map(function (d) { return sem.filter(function (p) { return dia0(p.creado_en) === d.getTime(); }).length; });
+    var mx = Math.max.apply(null, cuentas.concat([1]));
+    $('c-bar').innerHTML = dias.map(function (d, i) {
+      return '<div style="height:' + Math.max(4, cuentas[i] / mx * 100) + '%"><em>' + cuentas[i] + '</em><span>' + DIAS[d.getDay()] + '</span></div>';
+    }).join('');
+  }
+
+  function cambiarMotero(id, estado) {
+    sb.from('moteros').update({ estado: estado }).eq('id', id).then(function () { cargar(); });
+  }
+  document.addEventListener('click', function (e) {
+    var d = e.target && e.target.dataset; if (!d) return;
+    if (d.rev) { ir('moteros'); return; }
+    if (d.ok) cambiarMotero(d.ok, 'aprobado');
+    if (d.no) cambiarMotero(d.no, 'rechazado');
+    if (d.sus) cambiarMotero(d.sus, 'suspendido');
+    if (d.res) sb.from('incidencias').update({ resuelta: true }).eq('id', d.res).then(function () { cargar(); });
+    if (d.docs) verDocs(d.docs);
+  });
+
+  function verDocs(id) {
+    var m = D.mot.filter(function (x) { return x.id === id; })[0];
+    var cont = $('docs-' + id);
+    var lista = [['Foto del motero', m.foto_selfie], ['Licencia', m.foto_licencia], ['Tarjeta de propiedad', m.foto_tarjeta_propiedad], ['SOAT', m.foto_soat], ['Tecnomecánica', m.foto_tecnomecanica]].filter(function (x) { return x[1]; });
+    if (!lista.length) { cont.textContent = 'No subió fotos.'; return; }
+    cont.textContent = 'Abriendo fotos…';
+    sb.storage.from('documentos').createSignedUrls(lista.map(function (x) { return x[1]; }), 3600).then(function (r) {
+      if (r.error) { cont.textContent = errMsg(r.error); return; }
+      cont.innerHTML = r.data.map(function (u, i) { return u.signedUrl ? '<a target="_blank" rel="noopener" href="' + u.signedUrl + '">' + esc(lista[i][0]) + '</a>' : ''; }).join('');
+    });
+  }
+
+  $('nuevaI').onclick = function () { $('form').style.display = 'block'; };
+  $('cancelarI').onclick = function () { $('form').style.display = 'none'; };
+  $('guardarI').onclick = function () {
+    var r = $('ref').value.trim(), d = $('det').value.trim();
+    if (!r) { $('ref').focus(); return; }
+    sb.from('incidencias').insert({ tipo: $('tipo').value, referencia: r, descripcion: d || 'Sin detalle', resuelta: false }).then(function (x) {
+      if (x.error) { alert(errMsg(x.error)); return; }
+      $('ref').value = ''; $('det').value = ''; $('form').style.display = 'none';
+      cargar();
+    });
+  };
+
+  function ir(x) {
+    document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.t === x); });
+    document.querySelectorAll('.pag').forEach(function (p) { p.classList.remove('on'); });
+    $('p-' + x).classList.add('on');
+    window.scrollTo(0, 0);
+  }
+  document.querySelectorAll('nav button').forEach(function (b) { b.onclick = function () { ir(b.dataset.t); }; });
+})();
+</script>
+</body>
+</html>
