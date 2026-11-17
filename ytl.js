@@ -37,8 +37,8 @@
       pintar();
     });
     function pintar() {
-      box.style.display = 'block';
-      box.innerHTML = '<div class="au"><h1>' + titulo + '</h1><p class="au-s">' + (crear ? 'Crea tu cuenta con tu correo y una contraseña.' : 'Entra con tu correo y tu contraseña.') + '</p>' +
+      box.style.display = 'block'; var cg = document.getElementById('cargando') || document.getElementById('carga'); if (cg) cg.style.display = 'none';
+      box.innerHTML = '<div class="au"><img src="logo.png" alt="Ya te llega" style="display:block;width:96px;height:96px;margin:0 auto 6px"><h1>' + titulo + '</h1><p class="au-s">' + (crear ? 'Crea tu cuenta con tu correo y una contraseña.' : 'Entra con tu correo y tu contraseña.') + '</p>' +
         '<label for="au-c">Correo</label><input type="email" id="au-c" autocomplete="email" placeholder="nombre@correo.com">' +
         '<label for="au-p">Contraseña</label><input type="password" id="au-p" autocomplete="' + (crear ? 'new-password' : 'current-password') + '" placeholder="Mínimo 6 caracteres">' +
         '<button class="au-b" id="au-go" type="button">' + (crear ? 'Crear cuenta' : 'Entrar') + '</button>' +
