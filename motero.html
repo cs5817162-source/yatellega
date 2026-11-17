@@ -74,7 +74,7 @@
 <body>
 <div class="app">
   <div class="top">
-    <b><span style="color:#E8590C">Ya</span>Te<span style="color:#E8590C">Llega</span> · Conductor</b>
+    <img id="toplogo" src="logo.png" alt="Ya te llega" width="44" height="44" style="display:none">
     <div class="estado" id="estado" style="display:none"><i></i><span id="est-t">Desconectado</span></div>
   </div>
 
@@ -596,5 +596,5 @@
   ['conectar', 'aceptar', 'recogi', 'voy', 'entregar', 'otra'].forEach(function (id) { deslizante($(id)); });
 })();
 </script>
-</body>
+<script>(function(){var l=document.getElementById('toplogo');function u(){var r=document.getElementById('v-reg'),a=document.getElementById('auth');var h=(r&&!r.classList.contains('oculto'))||(a&&a.style.display==='block');l.style.display=h?'none':'block';}setInterval(u,300);u();})();</script></body>
 </html>
