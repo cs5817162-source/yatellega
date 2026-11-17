@@ -411,7 +411,7 @@
       acc += '</div>';
       return '<div class="mc"><div class="top"><span class="av">' + esc(ini(m.nombre)) + '</span><div><b>' + esc(m.nombre) + '</b><div class="sub" style="margin:0">+57' + esc(m.celular) + '</div></div></div>' + tag + '<hr>' +
         '<div class="g2"><div>Vehículo<b>Moto ' + esc(m.placa) + '</b></div><div>Calificación<i>Sin calificar</i></div><div>Mandados<b>' + hechos.length + '</b></div><div>Ganó<b>' + fmt(hechos.reduce(function (a, p) { return a + p.ganancia_motero_cop; }, 0)) + '</b></div></div>' + acc +
-        '<details><summary>Ver datos y documentos</summary>Cédula ' + esc(m.cedula) + ' · Nequi ' + esc(m.nequi || '—') + '<br>' + esc(m.direccion) + ', ' + esc(m.barrio) + ', ' + esc(m.ciudad) + '<br>' + esc(m.marca || '') + ' ' + esc(m.modelo || '') + ' ' + esc(m.anio) + ' ' + esc(m.color || '') +
+        '<details><summary>Ver datos y documentos</summary>Cédula ' + esc(m.cedula) + ' · Nequi ' + esc(m.nequi || '—') + '<br>' + esc(m.direccion) + ', ' + esc(m.barrio) + ', ' + esc(m.ciudad) + '<br>' + esc(m.marca || '') + ' ' + esc(m.modelo || m.anio) + ' ' + esc(m.color || '') +
         '<br>SOAT ' + esc(vig(m.soat_vence)) + (m.foto_soat ? ' (con foto)' : '') + '<br>Tecnomecánica ' + (m.tecnomecanica_vence ? esc(vig(m.tecnomecanica_vence)) : (m.foto_tecnomecanica ? 'con foto' : 'no aplica')) + '<br>Licencia ' + esc(vig(m.licencia_vence)) +
         '<div><button class="btn w sm" style="margin-top:10px" data-docs="' + m.id + '" type="button">Abrir fotos</button></div><div class="docs" id="docs-' + m.id + '"></div></details></div>';
     }).join('') : '<div class="vacio">No hay conductores en esta lista.</div>';
@@ -482,7 +482,9 @@
   function cambiar(id, estado) { sb.from('moteros').update({ estado: estado }).eq('id', id).then(function () { ultima = ''; cargar(); }); }
   function verDocs(id) {
     var m = motDe(id), cont = $('docs-' + id);
-    var lista = [['Foto del conductor', m.foto_selfie], ['Licencia', m.foto_licencia], ['Tarjeta de propiedad', m.foto_tarjeta_propiedad], ['SOAT', m.foto_soat], ['Tecnomecánica', m.foto_tecnomecanica]].filter(function (x) { return x[1]; });
+    var lista = [];
+    function add(n, val) { if (!val) return; var ps = String(val).split('|'); ps.forEach(function (x, i) { lista.push([n + (ps.length > 1 ? (i ? ' (lado B)' : ' (lado A)') : ''), x]); }); }
+    add('Foto del conductor', m.foto_selfie); add('Licencia', m.foto_licencia); add('Tarjeta de propiedad', m.foto_tarjeta_propiedad); add('SOAT', m.foto_soat); add('Tecnomecánica', m.foto_tecnomecanica);
     if (!lista.length) { cont.textContent = 'No subió fotos.'; return; }
     cont.textContent = 'Abriendo fotos…';
     sb.storage.from('documentos').createSignedUrls(lista.map(function (x) { return x[1]; }), 3600).then(function (r) {

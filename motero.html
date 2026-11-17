@@ -107,7 +107,7 @@
       <input type="tel" id="nequi" inputmode="numeric" placeholder="Número de celular del Nequi">
       <div class="doc">
         <b>Foto tuya, de frente</b>
-        <div class="foto"><label class="bt">Tomar o escoger foto<input type="file" accept="image/*" data-n="selfie"></label><span class="nom"></span></div>
+        <div class="foto"><label class="bt">Tomar mi foto<input type="file" accept="image/*" capture="user" data-n="selfie"></label><span class="nom"></span></div>
       </div>
     </div>
 
@@ -115,15 +115,17 @@
       <h2>2. Documentos</h2>
       <div class="doc">
         <b>Licencia de conducción</b>
-        <div class="ayuda">Categoría A2 para moto. La foto es obligatoria.</div>
+        <div class="ayuda">Categoría A2 para moto. Las dos fotos son obligatorias: lado A y lado B.</div>
         <label for="licv" style="margin-top:0">Fecha de vencimiento</label>
         <input type="date" id="licv">
-        <div class="foto"><label class="bt">Foto de la licencia<input type="file" accept="image/*" data-n="licencia"></label><span class="nom"></span></div>
+        <div class="foto"><label class="bt">Tomar foto: lado A (frente)<input type="file" accept="image/*" capture="environment" data-n="licencia"></label><span class="nom"></span></div>
+        <div class="foto"><label class="bt">Tomar foto: lado B (atrás)<input type="file" accept="image/*" capture="environment" data-n="licenciaB"></label><span class="nom"></span></div>
       </div>
       <div class="doc">
         <b>Tarjeta de propiedad</b>
-        <div class="ayuda">Licencia de tránsito de la moto. La foto es obligatoria.</div>
-        <div class="foto"><label class="bt">Foto de la tarjeta<input type="file" accept="image/*" data-n="tarjeta"></label><span class="nom"></span></div>
+        <div class="ayuda">Licencia de tránsito de la moto. Las dos fotos son obligatorias: lado A y lado B.</div>
+        <div class="foto"><label class="bt">Tomar foto: lado A (frente)<input type="file" accept="image/*" capture="environment" data-n="tarjeta"></label><span class="nom"></span></div>
+        <div class="foto"><label class="bt">Tomar foto: lado B (atrás)<input type="file" accept="image/*" capture="environment" data-n="tarjetaB"></label><span class="nom"></span></div>
       </div>
       <div class="doc">
         <b>SOAT vigente</b>
@@ -132,7 +134,7 @@
         <input type="date" id="soatv">
         <div class="est" id="soat-est"></div>
         <div class="o">o</div>
-        <div class="foto"><label class="bt">Foto del SOAT<input type="file" accept="image/*" data-n="soat"></label><span class="nom"></span></div>
+        <div class="foto"><label class="bt">Tomar foto del SOAT<input type="file" accept="image/*" capture="environment" data-n="soat"></label><span class="nom"></span></div>
       </div>
       <div class="doc">
         <b>Revisión técnico-mecánica</b>
@@ -143,7 +145,7 @@
           <input type="date" id="tecv">
           <div class="est" id="tec-est"></div>
           <div class="o">o</div>
-          <div class="foto"><label class="bt">Foto de la revisión<input type="file" accept="image/*" data-n="tecno"></label><span class="nom"></span></div>
+          <div class="foto"><label class="bt">Tomar foto de la revisión<input type="file" accept="image/*" capture="environment" data-n="tecno"></label><span class="nom"></span></div>
         </div>
       </div>
     </div>
@@ -154,10 +156,8 @@
       <input type="text" id="placa" maxlength="6" autocapitalize="characters" autocomplete="off" placeholder="ABC12D">
       <label for="marca">Marca</label>
       <input type="text" id="marca" placeholder="Ej. Honda, Yamaha, AKT">
-      <label for="modelo">Modelo</label>
-      <input type="text" id="modelo" placeholder="Ej. CB 125F">
-      <label for="anio">Año</label>
-      <input type="number" id="anio" inputmode="numeric" placeholder="Ej. 2022">
+      <label for="modelo">Modelo <small>el año de tu moto</small></label>
+      <input type="text" id="modelo" inputmode="numeric" maxlength="4" placeholder="Ej. 2024">
       <label for="color">Color</label>
       <input type="text" id="color" placeholder="Ej. Negro">
     </div>
@@ -339,6 +339,7 @@
   casilla($('acepto'), function (s) { acepto = s; $('rerr').textContent = ''; });
   casilla($('notec'), function (s) { notec = s; $('tec-campos').style.display = s ? 'none' : 'block'; progreso(); });
   $('placa').addEventListener('input', function () { this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+  $('modelo').addEventListener('input', function () { this.value = this.value.replace(/\D/g, '').slice(0, 4); });
 
   function v(i) { return $(i).value.trim(); }
   function ok1() { return v('nombre').length >= 5 && /^\d{6,10}$/.test(v('cedula')) && /^3\d{9}$/.test(v('cel')) && /^\S+@\S+\.\S+$/.test(v('correo')) && v('dir').length >= 5 && v('barrio').length >= 3 && v('ciudad').length >= 3 && /^3\d{9}$/.test(v('nequi')) && archivos.selfie; }
@@ -346,7 +347,7 @@
   function tecOk() { if (notec) return true; var r = vigente($('tecv').value); return r === true || (r === null && archivos.tecno); }
   function ok2() { return vigente($('licv').value) === true && archivos.licencia && archivos.tarjeta && soatOk() && tecOk(); }
   function ok3() {
-    var a = parseInt(v('anio'), 10);
+    var a = parseInt(v('modelo'), 10);
     return /^[A-Z]{3}\d{2}[A-Z]$/.test(v('placa')) && v('marca') && v('modelo') && a >= 1990 && a <= hoy.getFullYear() + 1 && v('color');
   }
   function progreso() {
@@ -377,14 +378,15 @@
       ['nequi', /^3\d{9}$/.test(v('nequi')), 'El número de Nequi debe tener 10 números y empezar por 3.'],
       ['f:selfie', !!archivos.selfie, 'Falta tu foto (selfie).'],
       ['licv', vigente($('licv').value) === true, 'Pon la fecha de vencimiento de tu licencia, y que no esté vencida.'],
-      ['f:licencia', !!archivos.licencia, 'Falta la foto de la licencia.'],
-      ['f:tarjeta', !!archivos.tarjeta, 'Falta la foto de la tarjeta de propiedad.'],
+      ['f:licencia', !!archivos.licencia, 'Falta la foto de la licencia, lado A (frente).'],
+      ['f:licenciaB', !!archivos.licenciaB, 'Falta la foto de la licencia, lado B (atrás).'],
+      ['f:tarjeta', !!archivos.tarjeta, 'Falta la foto de la tarjeta de propiedad, lado A (frente).'],
+      ['f:tarjetaB', !!archivos.tarjetaB, 'Falta la foto de la tarjeta de propiedad, lado B (atrás).'],
       ['soatv', soatOk(), 'SOAT: pon una fecha de vencimiento vigente o sube la foto.'],
       ['tecv', tecOk(), 'Revisión técnico-mecánica: pon una fecha vigente, sube la foto, o marca que todavía no le toca.'],
       ['placa', /^[A-Z]{3}\d{2}[A-Z]$/.test(v('placa')), 'La placa va con formato ABC12D (3 letras, 2 números y 1 letra).'],
       ['marca', !!v('marca'), 'Escribe la marca de la moto.'],
-      ['modelo', !!v('modelo'), 'Escribe el modelo de la moto.'],
-      ['anio', (function () { var a = parseInt(v('anio'), 10); return a >= 1990 && a <= hoy.getFullYear() + 1; })(), 'El año de la moto no es válido (desde 1990).'],
+      ['modelo', (function () { var a = parseInt(v('modelo'), 10); return a >= 1990 && a <= hoy.getFullYear() + 1; })(), 'El modelo es el año de tu moto, por ejemplo 2024.'],
       ['color', !!v('color'), 'Escribe el color de la moto.'],
       ['acepto', !!acepto, 'Marca la casilla de aceptar los términos.']
     ];
@@ -410,7 +412,7 @@
     if (!archivos.tarjeta) { e.textContent = 'Falta la foto de la tarjeta de propiedad.'; return; }
     if (!soatOk()) { e.textContent = 'SOAT: pon una fecha de vencimiento vigente o sube la foto.'; return; }
     if (!tecOk()) { e.textContent = 'Revisión técnico-mecánica: pon una fecha vigente, sube la foto, o marca que todavía no le toca.'; return; }
-    if (!ok3()) { e.textContent = 'Revisa los datos de la moto: placa con formato ABC12D, marca, modelo, año y color.'; return; }
+    if (!ok3()) { e.textContent = 'Revisa los datos de la moto: placa con formato ABC12D, marca, modelo (año) y color.'; return; }
     if (!acepto) { e.textContent = 'Marca que aceptas los términos y el uso de tus datos.'; return; }
     e.textContent = 'Enviando tu registro y tus fotos… puede tardar un momento.';
     $('enviar').disabled = true;
@@ -420,10 +422,10 @@
       return sb.from('moteros').insert({
         user_id: user.id, nombre: v('nombre'), cedula: v('cedula'), celular: v('cel'), correo: v('correo'),
         direccion: v('dir'), barrio: v('barrio'), ciudad: v('ciudad'), nequi: v('nequi'),
-        placa: v('placa'), marca: v('marca'), modelo: v('modelo'), anio: parseInt(v('anio'), 10), color: v('color'),
+        placa: v('placa'), marca: v('marca'), modelo: v('modelo'), anio: parseInt(v('modelo'), 10), color: v('color'),
         licencia_vence: $('licv').value || null, soat_vence: $('soatv').value || null,
         tecnomecanica_vence: notec ? null : ($('tecv').value || null),
-        foto_selfie: rutas.selfie || null, foto_licencia: rutas.licencia || null, foto_tarjeta_propiedad: rutas.tarjeta || null,
+        foto_selfie: rutas.selfie || null, foto_licencia: rutas.licencia ? (rutas.licencia + (rutas.licenciaB ? '|' + rutas.licenciaB : '')) : null, foto_tarjeta_propiedad: rutas.tarjeta ? (rutas.tarjeta + (rutas.tarjetaB ? '|' + rutas.tarjetaB : '')) : null,
         foto_soat: rutas.soat || null, foto_tecnomecanica: rutas.tecno || null
       }).select().single();
     }).then(function (r) {
