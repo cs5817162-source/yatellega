@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ya te llega - Motero</title><link rel="icon" type="image/png" href="logo.png"><link rel="apple-touch-icon" href="logo.png"><link rel="manifest" href="manifest-motero.webmanifest"><meta name="theme-color" content="#E8590C">
+<title>Ya te llega - Conductor</title><link rel="icon" type="image/png" href="logo.png"><link rel="apple-touch-icon" href="logo.png"><link rel="manifest" href="manifest-motero.webmanifest"><meta name="theme-color" content="#E8590C">
 <link rel="stylesheet" href="ytl.css">
 <style>
   :root { --n:#E8590C; --g:#1F2937; --c:#FFF6E5; --m:#6B7280; }
@@ -74,7 +74,7 @@
 <body>
 <div class="app">
   <div class="top">
-    <b><span style="color:#E8590C">Ya</span>Te<span style="color:#E8590C">Llega</span> · Motero</b>
+    <b><span style="color:#E8590C">Ya</span>Te<span style="color:#E8590C">Llega</span> · Conductor</b>
     <div class="estado" id="estado" style="display:none"><i></i><span id="est-t">Desconectado</span></div>
   </div>
 
@@ -83,7 +83,7 @@
   <div id="v-carga" class="carga">Cargando…</div>
 
   <div id="v-reg" class="oculto">
-    <img src="logo.png" alt="Ya te llega" width="96" height="96" style="display:block;margin:4px auto 10px"><h1 style="text-align:center">Registro de motero</h1>
+    <img src="logo.png" alt="Ya te llega" width="96" height="96" style="display:block;margin:4px auto 10px"><h1 style="text-align:center">Registro de conductor</h1>
     <p class="sub">Llena todo para poder recibir pedidos. Tus datos solo los usa Ya te llega.</p>
     <div class="prog" id="prog"><span></span><span></span><span></span></div>
 
@@ -288,7 +288,7 @@
   }
 
   /* ---------- entrada ---------- */
-  entrar($('auth'), 'Entra como motero', function (u) { user = u; $('auth').style.display = 'none'; ver('carga'); cargarMotero(); });
+  entrar($('auth'), 'Entra como conductor', function (u) { user = u; $('auth').style.display = 'none'; ver('carga'); cargarMotero(); });
   setTimeout(function () { if ($('auth').style.display === 'block') $('v-carga').classList.add('oculto'); }, 800);
 
   function cargarMotero() {
@@ -442,7 +442,7 @@
       if (r.data === true) {
         sb.from('pedidos').select('*').eq('id', id).single().then(function (q) { ped = q.data; mostrarActivo(); });
       } else {
-        saltados[id] = 1; ped = null; $('esp-msg').textContent = 'Otro motero ya tomó ese pedido.'; ver('espera');
+        saltados[id] = 1; ped = null; $('esp-msg').textContent = 'Otro conductor ya tomó ese pedido.'; ver('espera');
       }
     });
   };

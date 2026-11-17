@@ -145,7 +145,7 @@
     <div class="mn" id="mn">
       <button class="on" data-v="vivo" type="button"><svg viewBox="0 0 24 24"><path d="M12 22s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>En vivo</button>
       <button data-v="resumen" type="button"><svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Resumen</button>
-      <button data-v="moteros" type="button"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c.8-3.5 3.5-5 7-5s6.2 1.5 7 5"/><circle cx="17" cy="9" r="2.5"/><path d="M18 14c2.5.3 3.6 1.8 4 4"/></svg>Moteros<span class="bg" id="bg-mot"></span></button>
+      <button data-v="moteros" type="button"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c.8-3.5 3.5-5 7-5s6.2 1.5 7 5"/><circle cx="17" cy="9" r="2.5"/><path d="M18 14c2.5.3 3.6 1.8 4 4"/></svg>Conductores<span class="bg" id="bg-mot"></span></button>
       <button data-v="clientes" type="button"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><circle cx="12" cy="10" r="3"/><path d="M7 18c1-2.5 3-3.5 5-3.5s4 1 5 3.5"/></svg>Clientes</button>
       <button data-v="inc" type="button"><svg viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>Incidencias<span class="bg" id="bg-inc"></span></button>
       <button data-v="negocio" type="button"><svg viewBox="0 0 24 24"><path d="M4 9l1.5-5h13L20 9"/><path d="M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9v11H4z"/></svg>Mi negocio</button>
@@ -161,8 +161,8 @@
       <div class="kpis">
         <div class="k"><small>Mandados hoy</small><b id="k-ped">0</b><span id="k-ped2">0 completados</span></div>
         <div class="k"><small>Ingresos hoy</small><b id="k-ing">$0</b><span>De mandados completados</span></div>
-        <div class="k"><small>Moteros en línea</small><b id="k-lin">0</b><span id="k-lin2">de 0 activos</span></div>
-        <div class="k"><small>Esperando moto</small><b id="k-esp">0</b><span>Mandados sin motero</span></div>
+        <div class="k"><small>Conductores en línea</small><b id="k-lin">0</b><span id="k-lin2">de 0 activos</span></div>
+        <div class="k"><small>Esperando moto</small><b id="k-esp">0</b><span>Mandados sin conductor</span></div>
       </div>
       <div class="vivo">
         <div><div id="mapa"></div><div class="sub" style="margin-top:8px">Mapa de Cali. Los puntos de cada mandado aparecerán cuando conectemos las direcciones al mapa.</div></div>
@@ -177,13 +177,13 @@
       <div class="kpis" id="res-k"></div>
       <div class="card"><h3>Mandados por hora</h3><div class="sub" id="hora-sub"></div><div class="barras" id="hora-b"></div><div class="eje" id="hora-e"></div><div class="lg"><span><i style="background:#E8590C"></i>Completados</span><span><i style="background:#E9EAEB"></i>Recibidos</span></div></div>
       <div class="card"><h3>Cómo terminaron</h3><div class="sub">Todo lo recibido en el período.</div><div class="chips" id="fin-c"></div></div>
-      <div class="card"><div class="lt"><h3>Rendimiento de moteros</h3><button class="btn g sm" id="csv-ren" type="button">Exportar CSV</button></div><div id="ren"></div></div>
+      <div class="card"><div class="lt"><h3>Rendimiento de conductores</h3><button class="btn g sm" id="csv-ren" type="button">Exportar CSV</button></div><div id="ren"></div></div>
       <div class="card"><h3>Detalle de mandados</h3><div class="sub">Los últimos del período.</div><div id="det" style="overflow-x:auto"></div></div>
     </section>
 
     <!-- MOTEROS -->
     <section class="view" id="v-moteros">
-      <div class="hd"><div><h1>Moteros</h1><div class="sub" id="mot-sub"></div></div><button class="btn" id="enl-mot" type="button">Copiar enlace para moteros</button></div>
+      <div class="hd"><div><h1>Conductores</h1><div class="sub" id="mot-sub"></div></div><button class="btn" id="enl-mot" type="button">Copiar enlace para conductores</button></div>
       <div class="chips" id="mot-f"></div>
       <div class="chips"><button class="btn g sm" id="csv-mot" type="button">Exportar CSV</button></div>
       <div class="mgrid" id="mot-l"></div>
@@ -201,9 +201,9 @@
       <div class="hd"><div><h1>Incidencias</h1><div class="sub">Solo lo que necesita a alguien. Lo demás funciona solo.</div></div><button class="btn" id="nuevaI" type="button">Registrar incidencia</button></div>
       <div class="form" id="form">
         <label for="tipo">Qué pasó</label>
-        <select id="tipo"><option>Llegó tarde</option><option>Maltrato del motero</option><option>Maltrato del cliente</option><option>Mala calificación</option><option>Pedido no tomado</option><option>Pedido cancelado</option><option>Otro</option></select>
+        <select id="tipo"><option>Llegó tarde</option><option>Maltrato del conductor</option><option>Maltrato del cliente</option><option>Mala calificación</option><option>Pedido no tomado</option><option>Pedido cancelado</option><option>Otro</option></select>
         <label for="ref">Pedido o persona</label>
-        <input type="text" id="ref" placeholder="Ej. pedido de Granada, motero Carlos">
+        <input type="text" id="ref" placeholder="Ej. pedido de Granada, conductor Carlos">
         <label for="det2">Detalle</label>
         <textarea id="det2" rows="3" placeholder="Cuenta qué pasó"></textarea>
         <div class="acc"><button class="btn" id="guardarI" type="button">Guardar</button><button class="btn g" id="cancelarI" type="button">Cancelar</button></div>
@@ -220,11 +220,11 @@
         <div>Ciudad</div><div>Cali, Colombia</div>
         <div>Horario</div><div>7:00 a. m. a 10:00 p. m., todos los días</div>
         <div>Precio de prueba</div><div>$7.500 por mandado (fijo mientras armamos las tarifas por distancia)</div>
-        <div>Reparto</div><div>85 % para el motero y 15 % para Ya te llega</div>
+        <div>Reparto</div><div>85 % para el conductor y 15 % para Ya te llega</div>
         <div>Formas de pago</div><div>Efectivo y Nequi</div>
       </div></div>
       <div class="card"><h3>Enlaces para compartir</h3><div class="sub">Cópialos y mándalos por WhatsApp.</div>
-        <div class="acc"><button class="btn w sm" data-copy="cliente.html" type="button">Copiar enlace de clientes</button><button class="btn w sm" data-copy="motero.html" type="button">Copiar enlace de moteros</button><button class="btn w sm" data-copy="panel.html" type="button">Copiar enlace del panel</button></div>
+        <div class="acc"><button class="btn w sm" data-copy="cliente.html" type="button">Copiar enlace de clientes</button><button class="btn w sm" data-copy="motero.html" type="button">Copiar enlace de conductores</button><button class="btn w sm" data-copy="panel.html" type="button">Copiar enlace del panel</button></div>
       </div>
     </section>
 
@@ -232,9 +232,9 @@
     <section class="view" id="v-ayuda">
       <div class="hd"><div><h1>Ayuda</h1><div class="sub">Lo básico para operar el panel</div></div></div>
       <div class="card"><h3>Cómo se usa</h3><ul class="lista-ay">
-        <li><b>Moteros nuevos:</b> se registran solos en su enlace y suben sus documentos. Entra a Moteros, revisa las fotos con "Ver datos y documentos" y toca Aprobar.</li>
-        <li><b>Pedidos:</b> el cliente pide, el motero aprobado y conectado recibe la oferta y la acepta. Lo ves en En vivo.</li>
-        <li><b>Nadie lo tomó:</b> si un mandado lleva más de 10 minutos sin motero, aparece en Incidencias con botones para llamar o escribirle al cliente.</li>
+        <li><b>Conductores nuevos:</b> se registran solos en su enlace y suben sus documentos. Entra a Conductores, revisa las fotos con "Ver datos y documentos" y toca Aprobar.</li>
+        <li><b>Pedidos:</b> el cliente pide, el conductor aprobado y conectado recibe la oferta y la acepta. Lo ves en En vivo.</li>
+        <li><b>Nadie lo tomó:</b> si un mandado lleva más de 10 minutos sin conductor, aparece en Incidencias con botones para llamar o escribirle al cliente.</li>
         <li><b>Incidencias:</b> registra a mano lo que pase (maltrato, tardanza, cancelaciones) y ciérralas cuando se resuelvan.</li>
         <li><b>Cifras:</b> en Resumen escoges Hoy, 7 días o 30 días y puedes exportar a CSV.</li>
       </ul></div>
@@ -251,7 +251,7 @@
   var D = { mot: [], cli: [], ped: [], inc: [] };
   var ultima = '', vista = 'vivo', per = 1, mF = 'todos', iF = 'abiertas', map = null;
   var SNOM = { paquete: 'Paquete', medicamentos: 'Medicamentos', comida: 'Comida', productos: 'Productos' };
-  var ETQ = { nuevo: ['Sin motero', 'r'], aceptado: ['Asignado', 'n'], en_camino: ['En camino', 'n'], en_recogida: ['Recogiendo', 'n'], recogido: ['Recogido', 'n'], en_entrega: ['Entregando', 'n'], entregado: ['Entregado', 'v'], cancelado: ['Cancelado', 'a'] };
+  var ETQ = { nuevo: ['Sin conductor', 'r'], aceptado: ['Asignado', 'n'], en_camino: ['En camino', 'n'], en_recogida: ['Recogiendo', 'n'], recogido: ['Recogido', 'n'], en_entrega: ['Entregando', 'n'], entregado: ['Entregado', 'v'], cancelado: ['Cancelado', 'a'] };
   var BASE = location.href.replace(/[^\/]*$/, '');
 
   entrar($('auth'), '<span style="color:#E8590C">Ya</span>Te<span style="color:#E8590C">Llega</span> · Panel', function (u) {
@@ -346,7 +346,7 @@
     $('act-n').textContent = vivos.length ? vivos.length + (vivos.length === 1 ? ' ahora' : ' ahora') : '';
     $('activos').innerHTML = vivos.length ? vivos.map(function (p) {
       var e = ETQ[p.estado];
-      return '<div class="man"><div class="t"><span class="ic' + (p.motero_id ? ' az' : '') + '"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17h5l3-6h-4M14 11l2 6M14 11h4"/></svg></span><div><b>' + esc(nombreCli(p.cliente_id)) + '</b><small>' + (p.motero_id ? esc(nombreMot(p.motero_id)) : 'Sin motero todavía') + '</small></div><span class="tag ' + e[1] + '">' + e[0] + '</span></div>' +
+      return '<div class="man"><div class="t"><span class="ic' + (p.motero_id ? ' az' : '') + '"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17h5l3-6h-4M14 11l2 6M14 11h4"/></svg></span><div><b>' + esc(nombreCli(p.cliente_id)) + '</b><small>' + (p.motero_id ? esc(nombreMot(p.motero_id)) : 'Sin conductor todavía') + '</small></div><span class="tag ' + e[1] + '">' + e[0] + '</span></div>' +
         '<div class="ruta"><div><i style="background:#16181B"></i>' + esc(p.direccion_recogida) + (p.barrio_recogida ? ', ' + esc(p.barrio_recogida) : '') + '</div><div><i style="background:#E8590C"></i>' + esc(p.direccion_entrega) + (p.barrio_entrega ? ', ' + esc(p.barrio_entrega) : '') + '</div></div>' +
         '<div class="pie"><span>' + esc(SNOM[p.servicio] || p.servicio) + ' · ' + (p.forma_pago === 'nequi' ? 'Nequi' : 'Efectivo') + ' · ' + hace(p.creado_en) + '</span><b>' + fmt(p.precio_cop) + '</b></div></div>';
     }).join('') : '<div class="vacio">No hay mandados en curso.</div>';
@@ -386,9 +386,9 @@
       var mine = ent.filter(function (p) { return p.motero_id === m.id; });
       return [m.nombre, mine.length, mine.reduce(function (a, p) { return a + p.precio_cop; }, 0), mine.reduce(function (a, p) { return a + p.ganancia_motero_cop; }, 0)];
     });
-    $('ren').innerHTML = filas.length ? '<table class="tabla"><tr><th>Motero</th><th>Completados</th><th>Ingresos</th><th>Ganó el motero</th></tr>' + filas.map(function (f) { return '<tr><td><b>' + esc(f[0]) + '</b></td><td>' + f[1] + '</td><td>' + fmt(f[2]) + '</td><td>' + fmt(f[3]) + '</td></tr>'; }).join('') + '</table>' : '<div class="vacio">Todavía no hay moteros activos.</div>';
-    $('csv-ren').onclick = function () { csv('rendimiento-moteros.csv', [['Motero', 'Completados', 'Ingresos', 'Gano el motero']].concat(filas)); };
-    $('det').innerHTML = ps.length ? '<table class="tabla"><tr><th>Fecha</th><th>Cliente</th><th>Estado</th><th>Motero</th><th>Precio</th></tr>' + ps.slice(0, 15).map(function (p) {
+    $('ren').innerHTML = filas.length ? '<table class="tabla"><tr><th>Conductor</th><th>Completados</th><th>Ingresos</th><th>Ganó el conductor</th></tr>' + filas.map(function (f) { return '<tr><td><b>' + esc(f[0]) + '</b></td><td>' + f[1] + '</td><td>' + fmt(f[2]) + '</td><td>' + fmt(f[3]) + '</td></tr>'; }).join('') + '</table>' : '<div class="vacio">Todavía no hay conductores activos.</div>';
+    $('csv-ren').onclick = function () { csv('rendimiento-conductores.csv', [['Conductor', 'Completados', 'Ingresos', 'Gano el conductor']].concat(filas)); };
+    $('det').innerHTML = ps.length ? '<table class="tabla"><tr><th>Fecha</th><th>Cliente</th><th>Estado</th><th>Conductor</th><th>Precio</th></tr>' + ps.slice(0, 15).map(function (p) {
       var e = ETQ[p.estado]; var d = new Date(p.creado_en);
       return '<tr><td>' + d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) + ', ' + d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) + '</td><td>' + esc(nombreCli(p.cliente_id)) + '</td><td><span class="tag ' + e[1] + '" style="margin:0">' + e[0] + '</span></td><td>' + (p.motero_id ? esc(nombreMot(p.motero_id)) : 'Sin asignar') + '</td><td>' + fmt(p.precio_cop) + '</td></tr>';
     }).join('') + '</table>' : '<div class="vacio">Sin mandados en este período.</div>';
@@ -414,8 +414,8 @@
         '<details><summary>Ver datos y documentos</summary>Cédula ' + esc(m.cedula) + ' · Nequi ' + esc(m.nequi || '—') + '<br>' + esc(m.direccion) + ', ' + esc(m.barrio) + ', ' + esc(m.ciudad) + '<br>' + esc(m.marca || '') + ' ' + esc(m.modelo || '') + ' ' + esc(m.anio) + ' ' + esc(m.color || '') +
         '<br>SOAT ' + esc(vig(m.soat_vence)) + (m.foto_soat ? ' (con foto)' : '') + '<br>Tecnomecánica ' + (m.tecnomecanica_vence ? esc(vig(m.tecnomecanica_vence)) : (m.foto_tecnomecanica ? 'con foto' : 'no aplica')) + '<br>Licencia ' + esc(vig(m.licencia_vence)) +
         '<div><button class="btn w sm" style="margin-top:10px" data-docs="' + m.id + '" type="button">Abrir fotos</button></div><div class="docs" id="docs-' + m.id + '"></div></details></div>';
-    }).join('') : '<div class="vacio">No hay moteros en esta lista.</div>';
-    $('csv-mot').onclick = function () { csv('moteros.csv', [['Nombre', 'Cedula', 'Celular', 'Correo', 'Placa', 'Estado']].concat(D.mot.map(function (m) { return [m.nombre, m.cedula, m.celular, m.correo, m.placa, m.estado]; }))); };
+    }).join('') : '<div class="vacio">No hay conductores en esta lista.</div>';
+    $('csv-mot').onclick = function () { csv('conductores.csv', [['Nombre', 'Cedula', 'Celular', 'Correo', 'Placa', 'Estado']].concat(D.mot.map(function (m) { return [m.nombre, m.cedula, m.celular, m.correo, m.placa, m.estado]; }))); };
   }
 
   function renderClientes() {
@@ -444,7 +444,7 @@
     if (iF !== 'cerradas') {
       sis.forEach(function (p) {
         var c = cliDe(p.cliente_id), tel = c ? c.celular : '';
-        html += '<div class="inc"><div class="t">' + alerta('#C2410C') + '<b>Nadie lo tomó</b><span class="tag a">Abierta</span></div><p>No había ningún motero que tomara el mandado.</p><div class="meta">' + esc(nombreCli(p.cliente_id)) + ' · lo detectó el sistema · ' + hace(p.creado_en) + '</div>' +
+        html += '<div class="inc"><div class="t">' + alerta('#C2410C') + '<b>Nadie lo tomó</b><span class="tag a">Abierta</span></div><p>No había ningún conductor que tomara el mandado.</p><div class="meta">' + esc(nombreCli(p.cliente_id)) + ' · lo detectó el sistema · ' + hace(p.creado_en) + '</div>' +
           (tel ? '<a class="btn full" style="display:block;text-align:center;text-decoration:none" href="tel:+57' + esc(tel) + '">Llamar al cliente</a><a class="btn g full" style="display:block;text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/57' + esc(tel) + '">Escribirle por WhatsApp</a>' : '') + '</div>';
       });
       abi.forEach(function (i) { html += tarjetaInc(i); });
@@ -482,7 +482,7 @@
   function cambiar(id, estado) { sb.from('moteros').update({ estado: estado }).eq('id', id).then(function () { ultima = ''; cargar(); }); }
   function verDocs(id) {
     var m = motDe(id), cont = $('docs-' + id);
-    var lista = [['Foto del motero', m.foto_selfie], ['Licencia', m.foto_licencia], ['Tarjeta de propiedad', m.foto_tarjeta_propiedad], ['SOAT', m.foto_soat], ['Tecnomecánica', m.foto_tecnomecanica]].filter(function (x) { return x[1]; });
+    var lista = [['Foto del conductor', m.foto_selfie], ['Licencia', m.foto_licencia], ['Tarjeta de propiedad', m.foto_tarjeta_propiedad], ['SOAT', m.foto_soat], ['Tecnomecánica', m.foto_tecnomecanica]].filter(function (x) { return x[1]; });
     if (!lista.length) { cont.textContent = 'No subió fotos.'; return; }
     cont.textContent = 'Abriendo fotos…';
     sb.storage.from('documentos').createSignedUrls(lista.map(function (x) { return x[1]; }), 3600).then(function (r) {

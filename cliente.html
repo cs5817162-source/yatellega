@@ -296,8 +296,8 @@
       if (r.error) { err.textContent = errMsg(r.error); return; }
       err.textContent = '';
       ok.textContent = pago === 'nequi'
-        ? 'Listo, estamos buscando tu moto. Pagas por Nequi: el motero confirma que le llegó el pago y con tu código cierra la entrega.'
-        : 'Listo, estamos buscando tu moto. Pagas en efectivo al motero cuando llegue.';
+        ? 'Listo, estamos buscando tu moto. Pagas por Nequi: el conductor confirma que le llegó el pago y con tu código cierra la entrega.'
+        : 'Listo, estamos buscando tu moto. Pagas en efectivo al conductor cuando llegue.';
       ok.style.display = 'block';
       cargarPedidos();
       setTimeout(function () { irA('pedidos'); }, 1200);
@@ -324,7 +324,7 @@
     if (!ps.length) { l.innerHTML = '<div class="vacio">Todavía no tienes pedidos.</div>'; return; }
     l.innerHTML = ps.map(function (p) {
       var cl = p.estado === 'entregado' ? ' v' : p.estado === 'cancelado' ? ' r' : '';
-      var cod = (activo(p) && cods[p.id]) ? '<div class="cod">Tu código de entrega<b>' + esc(cods[p.id]) + '</b>Dáselo al motero cuando te entregue.</div>' : '';
+      var cod = (activo(p) && cods[p.id]) ? '<div class="cod">Tu código de entrega<b>' + esc(cods[p.id]) + '</b>Dáselo al conductor cuando te entregue.</div>' : '';
       var can = p.estado === 'nuevo' ? '<br><button type="button" data-can="' + p.id + '">Cancelar pedido</button>' : '';
       return '<div class="ped"><span class="est' + cl + '">' + esc(ETQ[p.estado] || p.estado) + '</span><br><b>' + esc(SNOM[p.servicio] || p.servicio) + '</b> · ' + (p.forma_pago === 'nequi' ? 'Nequi' : 'Efectivo') + ' · ' + fmt(p.precio_cop) +
         '<br>Recoger: ' + esc(p.direccion_recogida) + (p.barrio_recogida ? ', ' + esc(p.barrio_recogida) : '') +
