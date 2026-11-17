@@ -70,7 +70,7 @@
   .est { font-size:13px; margin-top:6px; }
   .est.ok { color:#166534; } .est.mal { color:#B91C1C; }
 </style>
-</head>
+<style>.malcampo{outline:3px solid #B3162B !important;outline-offset:2px;border-radius:14px}</style></head>
 <body>
 <div class="app">
   <div class="top">
@@ -364,8 +364,46 @@
     });
   }
 
+
+  function primerError() {
+    var L = [
+      ['nombre', v('nombre').length >= 5, 'Escribe tu nombre completo.'],
+      ['cedula', /^\d{6,10}$/.test(v('cedula')), 'La cédula debe tener entre 6 y 10 números, sin puntos ni espacios.'],
+      ['cel', /^3\d{9}$/.test(v('cel')), 'El celular debe tener 10 números y empezar por 3.'],
+      ['correo', /^\S+@\S+\.\S+$/.test(v('correo')), 'Escribe un correo válido.'],
+      ['dir', v('dir').length >= 5, 'Escribe tu dirección de residencia.'],
+      ['barrio', v('barrio').length >= 3, 'Escribe tu barrio.'],
+      ['ciudad', v('ciudad').length >= 3, 'Escribe tu ciudad.'],
+      ['nequi', /^3\d{9}$/.test(v('nequi')), 'El número de Nequi debe tener 10 números y empezar por 3.'],
+      ['f:selfie', !!archivos.selfie, 'Falta tu foto (selfie).'],
+      ['licv', vigente($('licv').value) === true, 'Pon la fecha de vencimiento de tu licencia, y que no esté vencida.'],
+      ['f:licencia', !!archivos.licencia, 'Falta la foto de la licencia.'],
+      ['f:tarjeta', !!archivos.tarjeta, 'Falta la foto de la tarjeta de propiedad.'],
+      ['soatv', soatOk(), 'SOAT: pon una fecha de vencimiento vigente o sube la foto.'],
+      ['tecv', tecOk(), 'Revisión técnico-mecánica: pon una fecha vigente, sube la foto, o marca que todavía no le toca.'],
+      ['placa', /^[A-Z]{3}\d{2}[A-Z]$/.test(v('placa')), 'La placa va con formato ABC12D (3 letras, 2 números y 1 letra).'],
+      ['marca', !!v('marca'), 'Escribe la marca de la moto.'],
+      ['modelo', !!v('modelo'), 'Escribe el modelo de la moto.'],
+      ['anio', (function () { var a = parseInt(v('anio'), 10); return a >= 1990 && a <= hoy.getFullYear() + 1; })(), 'El año de la moto no es válido (desde 1990).'],
+      ['color', !!v('color'), 'Escribe el color de la moto.'],
+      ['acepto', !!acepto, 'Marca la casilla de aceptar los términos.']
+    ];
+    for (var i = 0; i < L.length; i++) if (!L[i][1]) return L[i];
+    return null;
+  }
+  function marcar(f, e) {
+    document.querySelectorAll('.malcampo').forEach(function (x) { x.classList.remove('malcampo'); });
+    var el = f[0].indexOf('f:') === 0 ? document.querySelector('input[data-n="' + f[0].slice(2) + '"]').parentNode.parentNode : $(f[0]);
+    el.classList.add('malcampo');
+    e.textContent = f[2];
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (x) { el.scrollIntoView(); }
+    if (el.focus && /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) { try { el.focus({ preventScroll: true }); } catch (x) { el.focus(); } }
+  }
+  document.addEventListener('input', function () { document.querySelectorAll('.malcampo').forEach(function (x) { x.classList.remove('malcampo'); }); });
+  document.addEventListener('change', function () { document.querySelectorAll('.malcampo').forEach(function (x) { x.classList.remove('malcampo'); }); });
   $('enviar').addEventListener('click', function () {
     var e = $('rerr');
+    var pe = primerError(); if (pe) { marcar(pe, e); return; }
     if (!ok1()) { e.textContent = 'Revisa tus datos: nombre, cédula, celular (10 números que empiezan por 3), correo, dirección de residencia, barrio, ciudad, Nequi y tu foto.'; return; }
     if (vigente($('licv').value) !== true) { e.textContent = 'Pon la fecha de vencimiento de tu licencia, y que no esté vencida.'; return; }
     if (!archivos.licencia) { e.textContent = 'Falta la foto de la licencia.'; return; }
