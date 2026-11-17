@@ -88,7 +88,7 @@ body.mapa #mapa-capa { display:block; }
 @keyframes latir { 0% { box-shadow:0 0 0 0 rgba(34,197,94,.55); } 100% { box-shadow:0 0 0 22px rgba(34,197,94,0); } }
 #v-off, #v-espera { position:fixed; left:0; right:0; bottom:0; z-index:6; max-width:460px; margin:0 auto; background:#fff; border-radius:28px 28px 0 0; padding:10px 18px calc(18px + env(safe-area-inset-bottom)); box-shadow:0 -6px 24px rgba(0,0,0,.14); text-align:center; }
 .asa { width:44px; height:5px; border-radius:3px; background:#D1D5DB; margin:0 auto 8px; }
-.ilus { display:block; margin:0 auto 4px; }
+.ilus { display:block; margin:0 auto 4px; border-radius:50%; }
 #v-off h3, #v-espera h3 { font-size:24px; margin:4px 0 4px; font-weight:800; }
 .hs { font-size:17px; color:#6B7280; margin:0 0 6px; }
 #menu { position:fixed; z-index:20; left:14px; top:calc(80px + env(safe-area-inset-top)); width:min(320px, calc(100vw - 28px)); background:#fff; border-radius:20px; padding:16px; box-shadow:0 8px 30px rgba(0,0,0,.25); }
@@ -646,7 +646,7 @@ body.mapa #mapa-capa { display:block; }
   function iniciar() {
     if (listo || !window.L) return; listo = true;
     map = L.map('mapa', { zoomControl: false }).setView([3.4516, -76.5320], 15);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; OpenStreetMap &copy; CARTO' }).addTo(map);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
     map.attributionControl.setPosition('topright');
     var at = document.querySelector('.leaflet-control-attribution'); if (at) at.style.marginTop = '70px';
     map.on('dragstart', function () { seguir = false; });
