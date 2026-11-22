@@ -1,7 +1,18 @@
 (function () {
   var SB_URL = 'https://ercdafhhyhinnldeaplb.supabase.co';
   var SB_KEY = 'sb_publishable_jO4aeWshci1ZAoHnOuaDbQ_2mcUGUgU';
-  window.sb = window.supabase.createClient(SB_URL, SB_KEY);
+
+  // Cada pantalla guarda su propia sesion. Asi, en un mismo celular se
+  // puede estar dentro como cliente, como conductor y en el panel al
+  // mismo tiempo, sin que una saque a la otra. Sirve para hacer pruebas
+  // con un solo telefono, y tambien para quien pide y ademas maneja.
+  var pagina = (location.pathname.split('/').pop() || 'index').replace('.html', '');
+  if (pagina === 'motero') pagina = 'conductor';
+  var CLAVE_SESION = 'ytl-' + (pagina || 'index');
+
+  window.sb = window.supabase.createClient(SB_URL, SB_KEY, {
+    auth: { storageKey: CLAVE_SESION }
+  });
   window.$ = function (i) { return document.getElementById(i); };
   window.esc = function (t) { var d = document.createElement('div'); d.textContent = (t === null || t === undefined) ? '' : t; return d.innerHTML; };
   window.fmt = function (n) { return '$' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
