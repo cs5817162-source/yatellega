@@ -396,6 +396,19 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
   // Para que la pantalla de ganancias sepa quien es el conductor
   window.__mot = function () { return mot; };
 
+  // Mientras hay un pedido en curso, le avisamos al cliente donde va la
+  // moto. Se guarda en el pedido, asi que solo lo ve ese cliente, y deja
+  // de actualizarse apenas se entrega.
+  var ACTIVOS_POS = ['aceptado', 'en_camino', 'en_recogida', 'recogido', 'en_entrega'];
+  function reportarPosicion() {
+    if (!ped || !ped.id || ACTIVOS_POS.indexOf(ped.estado) < 0) return;
+    var p = window.__pos && window.__pos();
+    if (!p) return;
+    sb.rpc('reportar_posicion', { p_id: String(ped.id), p_lat: p[0], p_lng: p[1] })
+      .then(function () {}, function () {});   // si falla, no estorba
+  }
+  setInterval(reportarPosicion, 10000);
+
   entrar($('auth'), 'Entra como conductor', function (u) { user = u; $('auth').style.display = 'none'; ver('carga'); cargarMotero(); });
   setTimeout(function () { if ($('auth').style.display === 'block') $('v-carga').classList.add('oculto'); }, 800);
 

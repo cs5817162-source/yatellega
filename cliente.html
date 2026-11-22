@@ -18,6 +18,11 @@
   .ayuda { position:absolute; z-index:500; left:50%; bottom:10px; transform:translateX(-50%); background:#111827; color:#fff; border-radius:999px; padding:8px 16px; font-size:13px; font-weight:600; white-space:nowrap; }
   .miub { border:0; background:transparent; color:var(--n); font-weight:700; font-size:13px; cursor:pointer; font-family:inherit; flex:none; padding:8px 0 0; }
   .km { margin-top:12px; background:var(--c); border:1px solid var(--n); border-radius:12px; padding:10px 12px; font-size:14px; line-height:1.5; }
+  /* Seguir la moto mientras viene */
+  #mapa-seg { height:250px; border-radius:16px; overflow:hidden; border:1px solid #E5E7EB; }
+  .seg-est { background:var(--c); border:1px solid var(--n); border-radius:12px; padding:11px 13px; font-size:15px; line-height:1.5; margin:8px 0 14px; }
+  .moto-viva { width:38px; height:38px; border-radius:50%; background:var(--n); border:3px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; }
+  .moto-viva svg { width:22px; height:22px; }
   .cab { position:absolute; z-index:500; top:10px; left:10px; right:10px; background:#fff; border-radius:14px; padding:8px 12px; display:flex; align-items:center; gap:10px; box-shadow:0 1px 4px rgba(0,0,0,.12); }
   .cab .pin { width:40px; height:40px; border-radius:50%; flex:none; display:block; object-fit:cover; }
   .cab b { font-size:15px; font-weight:600; display:block; }
@@ -161,6 +166,10 @@
 
       <div class="pag" id="p-pedidos">
         <h1>Mis pedidos</h1>
+        <div id="seg" style="display:none">
+          <div id="mapa-seg"></div>
+          <div class="seg-est" id="seg-est"></div>
+        </div>
         <div id="lista"><div class="vacio">Todavía no tienes pedidos.</div></div>
       </div>
 
@@ -544,8 +553,86 @@
       });
     });
   }
+  // ---------- Seguir la moto en el mapa mientras viene ----------
+  var mapS = null, capaS = null;
+
+  function bolita(color) {
+    return L.divIcon({ className: '',
+      html: '<div style="width:16px;height:16px;border-radius:50%;background:' + color +
+            ';border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)"></div>',
+      iconSize: [16, 16], iconAnchor: [8, 8] });
+  }
+  function iconoMoto() {
+    return L.divIcon({ className: '',
+      html: '<div class="moto-viva"><svg viewBox="0 0 32 32" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' +
+            '<circle cx="8" cy="23" r="4.5"/><circle cx="25" cy="23" r="4.5"/><path d="M8 23h6l4-8h-5M18 15l3 8M18 15h5l2 8"/></svg></div>',
+      iconSize: [38, 38], iconAnchor: [19, 19] });
+  }
+  function hace(iso) {
+    if (!iso) return '';
+    var s = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+    if (s < 60) return 'hace un momento';
+    if (s < 3600) return 'hace ' + Math.round(s / 60) + ' min';
+    return 'hace rato';
+  }
+
+  function seguir(p) {
+    var caja = $('seg');
+    var hayMoto = p && p.lat_conductor !== null && p.lat_conductor !== undefined;
+    if (!hayMoto) { caja.style.display = 'none'; return; }
+    caja.style.display = 'block';
+
+    if (!mapS) {
+      mapS = L.map('mapa-seg', { zoomControl: false }).setView(CALI, 13);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19, attribution: '&copy; OpenStreetMap'
+      }).addTo(mapS);
+    }
+    setTimeout(function () { mapS.invalidateSize(); }, 80);
+
+    if (capaS) mapS.removeLayer(capaS);
+    capaS = L.layerGroup().addTo(mapS);
+
+    var moto = [p.lat_conductor, p.lng_conductor];
+    var rec = (p.lat_recogida === null || p.lat_recogida === undefined) ? null : [p.lat_recogida, p.lng_recogida];
+    var ent = (p.lat_entrega === null || p.lat_entrega === undefined) ? null : [p.lat_entrega, p.lng_entrega];
+
+    if (rec) L.marker(rec, { icon: bolita('#E8590C'), interactive: false }).addTo(capaS);
+    if (ent) L.marker(ent, { icon: bolita('#111827'), interactive: false }).addTo(capaS);
+    L.marker(moto, { icon: iconoMoto(), interactive: false }).addTo(capaS);
+
+    // Antes de recoger va hacia la recogida; despues, hacia la entrega
+    var yendoARecoger = ['aceptado', 'en_camino', 'en_recogida'].indexOf(p.estado) >= 0;
+    var destino = yendoARecoger ? rec : ent;
+
+    if (destino) {
+      var linea = L.polyline([moto, destino], { color: '#E8590C', weight: 5, opacity: .85 }).addTo(capaS);
+      var u = 'https://router.project-osrm.org/route/v1/driving/' +
+              moto[1] + ',' + moto[0] + ';' + destino[1] + ',' + destino[0] +
+              '?overview=full&geometries=geojson';
+      fetch(u).then(function (r) { return r.json(); }).then(function (j) {
+        var g = j && j.routes && j.routes[0] && j.routes[0].geometry;
+        if (g && capaS && mapS.hasLayer(capaS)) {
+          linea.setLatLngs(g.coordinates.map(function (c) { return [c[1], c[0]]; }));
+        }
+      }).catch(function () { });
+      mapS.fitBounds(L.latLngBounds([moto, destino]), { padding: [34, 34], maxZoom: 16 });
+    } else {
+      mapS.setView(moto, 15);
+    }
+
+    var txt = yendoARecoger ? 'La moto va hacia el punto de recogida.' : 'La moto va hacia donde entregamos.';
+    if (destino) {
+      var km = L.latLng(moto[0], moto[1]).distanceTo(L.latLng(destino[0], destino[1])) / 1000 * FACTOR_RUTA;
+      txt += ' Le faltan unos <b>' + (Math.round(km * 10) / 10).toString().replace('.', ',') +
+             ' km</b>, como <b>' + Math.max(1, Math.round(km / 20 * 60)) + ' min</b>.';
+    }
+    $('seg-est').innerHTML = txt + '<br><span style="color:var(--m);font-size:13px">Ubicación ' + hace(p.pos_en) + '.</span>';
+  }
+
   function pintar(ps, cods) {
     var l = $('lista');
+    seguir(ps.filter(activo)[0]);
     if (!ps.length) { l.innerHTML = '<div class="vacio">Todavía no tienes pedidos.</div>'; return; }
     l.innerHTML = ps.map(function (p) {
       var cl = p.estado === 'entregado' ? ' v' : p.estado === 'cancelado' ? ' r' : '';
