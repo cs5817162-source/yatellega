@@ -289,6 +289,29 @@
 
   function campo(i, clase) { return $('f' + i).querySelector('.' + clase); }
 
+  // La calle que cruza. En Cali uno se ubica por el cruce ("la 41D2 con
+  // la 55B"), no por el numero de la casa, que casi nunca esta en los
+  // mapas. Esto pregunta que calles hay a 90 metros a la redonda.
+  function calleCruzada(ll, principal) {
+    var q = '[out:json][timeout:20];way(around:90,' + ll.lat + ',' + ll.lng + ')[highway][name];out tags;';
+    return fetch('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q))
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        var nombres = [];
+        (j.elements || []).forEach(function (e) {
+          var n = e.tags && e.tags.name;
+          if (n && n !== principal && nombres.indexOf(n) < 0) nombres.push(n);
+        });
+        // Si la principal es carrera, buscamos una calle, y al reves
+        var esCarrera = /carrera|cra|kr/i.test(principal || '');
+        var cruce = nombres.filter(function (n) {
+          return esCarrera ? /^calle|^cl\b|^diagonal/i.test(n) : /^carrera|^cra|^kr|^transversal/i.test(n);
+        })[0];
+        return cruce || nombres[0] || null;
+      })
+      .catch(function () { return null; });
+  }
+
   // De unas coordenadas a una direccion escrita
   function buscarDireccion(i, ll) {
     var u = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18' +
@@ -301,6 +324,15 @@
       if (via && !dir.dataset.escrito) dir.value = via;
       else if (!dir.value.trim()) dir.value = via || 'Punto marcado en el mapa';
       if (barrio && !bar.value.trim()) bar.value = barrio;
+
+      // Si no vino el numero de la casa, al menos decimos con que cruza
+      if (a.road && !a.house_number && !dir.dataset.escrito) {
+        calleCruzada(ll, a.road).then(function (cruce) {
+          if (cruce && !dir.dataset.escrito && dir.value.indexOf(' con ') < 0) {
+            dir.value = a.road + ' con ' + cruce;
+          }
+        });
+      }
     }).catch(function () {
       var dir = campo(i, 'dir');
       if (!dir.value.trim()) dir.value = 'Punto marcado en el mapa';
@@ -433,37 +465,62 @@
   // antenas o el wifi, que puede fallar cuadras. El GPS de verdad tarda
   // unos segundos en enganchar. Por eso no tomamos la primera lectura:
   // escuchamos varias y nos quedamos con la mas precisa.
+  var BUENA = 25, PASABLE = 45;     // metros
+  window.precisionUltima = null;
+  var buscandoGps = false;
+
+  var AYUDA_GPS =
+    '<br><br><b>Para que quede bien:</b>' +
+    '<br>1. Sal a un sitio despejado. Bajo techo el GPS no ve los satélites.' +
+    '<br>2. En Android: mantén pulsado el ícono de Chrome, entra a <b>Información de la app → Permisos → Ubicación</b> y activa <b>«Usar ubicación precisa»</b>. Si está en aproximada, siempre va a fallar por cuadras.' +
+    '<br>3. Apaga el ahorro de batería, que también apaga el GPS.' +
+    '<br>4. Vuelve a tocar «Mi ubicación».' +
+    '<br><br>O más rápido: <b>arrastra el punto naranja en el mapa</b> hasta tu puerta. Eso manda al conductor al sitio exacto.';
+
   function miUbicacion(i) {
     enfocar(i);
     if (!navigator.geolocation) {
       $('gps-info').innerHTML = '<b>Este celular no deja usar la ubicación.</b> Toca el mapa para marcar el punto.';
       return;
     }
-    $('gps-info').textContent = 'Buscando tu ubicación… dale unos segundos para que agarre bien.';
+    if (buscandoGps) return;
+    buscandoGps = true;
 
     var mejor = null, reloj = null, corte = null;
+    $('gps-info').textContent = 'Buscando tu ubicación… dale unos segundos, el GPS tarda en enganchar.';
+
     function listo() {
       if (reloj !== null) { navigator.geolocation.clearWatch(reloj); reloj = null; }
       clearTimeout(corte);
+      buscandoGps = false;
+
       if (!mejor) {
-        $('gps-info').innerHTML = '<b>No pudimos tomar tu ubicación.</b> Activa el GPS y el permiso, o toca el mapa.';
+        $('gps-info').innerHTML = '<b>No pudimos tomar tu ubicación.</b> Revisa que el GPS esté encendido y que le hayas dado permiso a la app.' + AYUDA_GPS;
         return;
       }
       var m = Math.round(mejor.coords.accuracy);
+      window.precisionUltima = m;
       poner(i, L.latLng(mejor.coords.latitude, mejor.coords.longitude));
-      map.setView([mejor.coords.latitude, mejor.coords.longitude], 18);
-      $('gps-info').innerHTML = m <= 25
-        ? 'Ubicación tomada con una precisión de unos <b>' + m + ' metros</b>. Si el punto no quedó en tu puerta, arrástralo.'
-        : '<b>El GPS está dando apenas ' + m + ' metros de precisión.</b> Sal a un sitio despejado y vuelve a tocar «Mi ubicación», o arrastra el punto hasta tu puerta.';
+      map.setView([mejor.coords.latitude, mejor.coords.longitude], m <= PASABLE ? 18 : 16);
+
+      if (m <= BUENA) {
+        $('gps-info').innerHTML = 'Ubicación tomada, con <b>' + m + ' metros</b> de precisión. Está bien. Si el punto no quedó justo en tu puerta, arrástralo.';
+      } else if (m <= PASABLE) {
+        $('gps-info').innerHTML = 'Ubicación tomada, con <b>' + m + ' metros</b> de precisión. Aceptable, pero <b>revisa el punto en el mapa</b> y arrástralo si hace falta.';
+      } else {
+        $('gps-info').innerHTML = '<b>El GPS solo está dando ' + m + ' metros de precisión.</b> Así el conductor puede llegar a otra cuadra.' + AYUDA_GPS;
+      }
     }
 
     reloj = navigator.geolocation.watchPosition(function (p) {
       if (!mejor || p.coords.accuracy < mejor.coords.accuracy) mejor = p;
-      if (p.coords.accuracy <= 20) listo();        // ya es bueno, no esperamos mas
+      var m = Math.round(mejor.coords.accuracy);
+      if (m <= BUENA) { listo(); return; }               // ya esta bueno
+      $('gps-info').innerHTML = 'Buscando… por ahora va en <b>' + m + ' metros</b>. Esperando que mejore.';
     }, function () { listo(); },
-       { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+       { enableHighAccuracy: true, maximumAge: 0, timeout: 25000 });
 
-    corte = setTimeout(listo, 9000);               // a los 9 segundos, lo mejor que haya
+    corte = setTimeout(listo, 20000);   // 20 segundos dandole chance al GPS
   }
 
   document.querySelectorAll('.miub').forEach(function (b) {
