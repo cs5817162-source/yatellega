@@ -105,6 +105,23 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
 #menu { position:fixed; z-index:20; left:14px; top:calc(80px + env(safe-area-inset-top)); width:min(320px, calc(100vw - 28px)); background:#fff; border-radius:20px; padding:16px; box-shadow:0 8px 30px rgba(0,0,0,.25); }
 #menu .mi { display:flex; gap:12px; align-items:center; margin-bottom:6px; }
 #menu .mc { font-size:13px; color:#6B7280; word-break:break-all; }
+/* Mis ganancias: lo que lleva ganado y lo que le debe a Ya te llega */
+#gan { position:fixed; inset:0; z-index:30; background:#fff; overflow-y:auto; padding:0 16px calc(28px + env(safe-area-inset-bottom)); }
+.gan-top { display:flex; align-items:center; gap:14px; padding:calc(14px + env(safe-area-inset-top)) 0 12px; position:sticky; top:0; background:#fff; }
+.gan-top b { font-size:20px; font-weight:800; }
+.gan-x { border:0; background:#F3F4F6; color:#1F2937; width:42px; height:42px; border-radius:50%; font-size:22px; cursor:pointer; font-family:inherit; flex:none; }
+.gan-caja { background:var(--n); color:#fff; border-radius:20px; padding:18px; margin-bottom:12px; }
+.gan-caja small { font-size:15px; opacity:.9; display:block; }
+.gan-caja b { font-size:40px; font-weight:800; display:block; line-height:1.15; }
+.gan-caja span { font-size:14px; opacity:.9; }
+.gan-fila { display:flex; justify-content:space-between; align-items:center; gap:12px; border:1px solid #E5E7EB; border-radius:14px; padding:14px; margin-bottom:8px; font-size:16px; }
+.gan-fila b { font-size:19px; font-weight:800; white-space:nowrap; }
+.gan-fila.deuda { background:#FCEBEB; border-color:#E8B4B4; color:#791F1F; }
+.gan-h { font-size:17px; font-weight:800; margin:18px 0 8px; }
+.gan-it { border:1px solid #E5E7EB; border-radius:14px; padding:12px 14px; margin-bottom:8px; font-size:15px; line-height:1.45; }
+.gan-it .t { display:flex; justify-content:space-between; gap:10px; font-weight:700; }
+.gan-it .s { color:#6B7280; font-size:14px; }
+.gan-vacio { color:#6B7280; text-align:center; padding:24px 0; font-size:15px; }
 </style></head>
 <body>
 <div class="app">
@@ -238,7 +255,25 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     <button id="btn-loc" type="button" aria-label="Mi ubicación"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1F2937" stroke-width="2" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8z"/></svg></button>
     <div id="aviso"></div>
   </div>
-  <div id="menu" class="oculto"><div class="mi"><img src="logo.png" alt="" width="56" height="56"><div><b>Ya te llega</b><div class="mc" id="menu-c"></div></div></div><button class="grande s" type="button" onclick="salir()">Cerrar sesión</button><button class="grande s" type="button" id="menu-x">Cerrar menú</button></div>
+  <div id="menu" class="oculto"><div class="mi"><img src="logo.png" alt="" width="56" height="56"><div><b>Ya te llega</b><div class="mc" id="menu-c"></div></div></div><button class="grande p" type="button" id="menu-gan">Mis ganancias</button><button class="grande s" type="button" onclick="salir()">Cerrar sesión</button><button class="grande s" type="button" id="menu-x">Cerrar menú</button></div>
+
+  <div id="gan" class="oculto">
+    <div class="gan-top">
+      <button class="gan-x" id="gan-x" type="button" aria-label="Volver">&#8592;</button>
+      <b>Mis ganancias</b>
+    </div>
+    <div class="gan-caja">
+      <small>Ganaste hoy</small>
+      <b id="g-hoy">$0</b>
+      <span id="g-n">Todavía no has entregado nada hoy</span>
+    </div>
+    <div class="gan-fila"><span>Cobraste hoy, en total</span><b id="g-cobro">$0</b></div>
+    <div class="gan-fila deuda"><span>De eso, le debes a Ya te llega</span><b id="g-deuda">$0</b></div>
+    <div class="gan-fila"><span>Ganaste en los últimos 7 días</span><b id="g-sem">$0</b></div>
+    <h3 class="gan-h">Lo de hoy, uno por uno</h3>
+    <div id="g-lista"></div>
+    <p class="nota">Se cuentan solo los mandados que ya entregaste.</p>
+  </div>
 
   <div id="v-off" class="oculto">
     <div class="asa"></div>
@@ -358,6 +393,9 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
   }
 
   /* ---------- entrada ---------- */
+  // Para que la pantalla de ganancias sepa quien es el conductor
+  window.__mot = function () { return mot; };
+
   entrar($('auth'), 'Entra como conductor', function (u) { user = u; $('auth').style.display = 'none'; ver('carga'); cargarMotero(); });
   setTimeout(function () { if ($('auth').style.display === 'block') $('v-carga').classList.add('oculto'); }, 800);
 
@@ -821,6 +859,62 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     if (window.sb) sb.auth.getSession().then(function (r) { var s = r.data && r.data.session; $('menu-c').textContent = s ? s.user.email : ''; });
   });
   $('menu-x').addEventListener('click', function () { $('menu').classList.add('oculto'); });
+})();
+</script>
+
+<script>
+// --------------------- Mis ganancias ---------------------
+// Lo que el conductor lleva ganado, y lo que le debe a Ya te llega de lo
+// que cobro. Sale de los pedidos que ya entrego, no hace falta nada nuevo
+// en la base de datos.
+(function () {
+  function hoyCero() { var d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+
+  function pintar(filas) {
+    var ini = hoyCero().getTime();
+    var hoy = filas.filter(function (p) { return new Date(p.creado_en).getTime() >= ini; });
+
+    var gHoy = 0, cobro = 0, gSem = 0;
+    hoy.forEach(function (p) { gHoy += (p.ganancia_motero_cop || 0); cobro += (p.precio_cop || 0); });
+    filas.forEach(function (p) { gSem += (p.ganancia_motero_cop || 0); });
+
+    $('g-hoy').textContent = fmt(gHoy);
+    $('g-n').textContent = hoy.length
+      ? (hoy.length === 1 ? '1 mandado entregado' : hoy.length + ' mandados entregados')
+      : 'Todavía no has entregado nada hoy';
+    $('g-cobro').textContent = fmt(cobro);
+    $('g-deuda').textContent = fmt(cobro - gHoy);
+    $('g-sem').textContent = fmt(gSem);
+
+    $('g-lista').innerHTML = hoy.length ? hoy.map(function (p) {
+      var h = new Date(p.creado_en).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+      var pago = p.forma_pago === 'nequi' ? 'Nequi' : 'Efectivo';
+      return '<div class="gan-it"><div class="t"><span>' + h + ' · ' + esc(pago) + '</span><span>' + fmt(p.ganancia_motero_cop || 0) + '</span></div>' +
+             '<div class="s">' + esc(p.direccion_entrega || '') + (p.barrio_entrega ? ', ' + esc(p.barrio_entrega) : '') +
+             ' · cobraste ' + fmt(p.precio_cop || 0) + '</div></div>';
+    }).join('') : '<div class="gan-vacio">Cuando entregues tu primer mandado de hoy, aparece aquí.</div>';
+  }
+
+  function cargar() {
+    var m = window.__mot && window.__mot();
+    if (!m) { $('g-lista').innerHTML = '<div class="gan-vacio">Entra como conductor para ver tus ganancias.</div>'; return; }
+    var desde = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+    sb.from('pedidos')
+      .select('precio_cop,ganancia_motero_cop,forma_pago,creado_en,direccion_entrega,barrio_entrega')
+      .eq('motero_id', m.id).eq('estado', 'entregado').gte('creado_en', desde)
+      .order('creado_en', { ascending: false })
+      .then(function (r) {
+        if (r.error) { $('g-lista').innerHTML = '<div class="gan-vacio">' + esc(errMsg(r.error)) + '</div>'; return; }
+        pintar(r.data || []);
+      });
+  }
+
+  $('menu-gan').addEventListener('click', function () {
+    $('menu').classList.add('oculto');
+    $('gan').classList.remove('oculto');
+    cargar();
+  });
+  $('gan-x').addEventListener('click', function () { $('gan').classList.add('oculto'); });
 })();
 </script>
 <script>(function(){var l=document.getElementById('toplogo');function u(){var r=document.getElementById('v-reg'),a=document.getElementById('auth');var h=(r&&!r.classList.contains('oculto'))||(a&&a.style.display==='block');l.style.display=h?'none':'block';}setInterval(u,300);u();})();</script></body>

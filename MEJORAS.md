@@ -200,6 +200,46 @@ pueda descargar. Es barato de hacer y da mucha confianza.
 
 ---
 
+---
+
+# Fuente 2 — DiDi Conductor, la app por dentro
+
+Capturas de la app de conductor funcionando en Cali, noviembre de 2026.
+Aquí no hay quejas: es ver qué hicieron bien y decidir qué copiar.
+
+## Lo que vale la pena y ya tomamos
+
+- **Las dos distancias separadas**, con flecha verde para la recogida y
+  naranja para la entrega. Hecho.
+- **La ruta sobre el mapa** detrás de la tarjeta. Hecho.
+- **Pantalla de ganancias**: cuánto lleva hoy, cuánto cobró y cuánto debe.
+  Hecho, y de paso resuelve lo del efectivo del punto 5.
+
+## Lo que vale y falta
+
+- **El contador dentro del botón de aceptar.** DiDi llena el botón como
+  una barra mientras corren los segundos. Nosotros tenemos una barrita
+  aparte, que se ve menos.
+- **La forma de pago como etiqueta grande arriba.** Al conductor le
+  cambia el plan saber si es efectivo (toca llevar vueltas) o Nequi.
+- **Desglose del precio.** DiDi muestra «$700 de tarifa de gasolina»,
+  «$3.400 de tarifa base». Hace sentir que el número no es un capricho.
+- **Botón de emergencia.** En moto y de noche en Cali, esto pesa.
+- **Meta diaria.** «Definir meta diaria» y una barra de avance. Barato y
+  motiva.
+
+## Lo que NO conviene copiar todavía
+
+- **Mapa de calor de demanda y multiplicadores (1,2X–1,8X).** Necesita
+  muchos pedidos para que los colores signifiquen algo. Con pocos, miente.
+- **Verificación facial.** Necesita un servicio pago.
+- **Puntos, niveles y premios.** Eso sirve para retener miles de
+  conductores. Con los primeros, la confianza se gana hablando.
+- **Tasa de aceptación a la vista.** Es justo lo que los repartidores
+  sienten como castigo escondido. Mejor no empezar por ahí.
+
+---
+
 ## Por dónde empezar
 
 Ordenado por lo que más duele frente a lo que cuesta hacerlo:
