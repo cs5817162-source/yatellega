@@ -224,7 +224,7 @@
         <div>Formas de pago</div><div>Efectivo y Nequi</div>
       </div></div>
       <div class="card"><h3>Enlaces para compartir</h3><div class="sub">Cópialos y mándalos por WhatsApp.</div>
-        <div class="acc"><button class="btn w sm" data-copy="cliente.html" type="button">Copiar enlace de clientes</button><button class="btn w sm" data-copy="motero.html" type="button">Copiar enlace de conductores</button><button class="btn w sm" data-copy="panel.html" type="button">Copiar enlace del panel</button></div>
+        <div class="acc"><button class="btn w sm" data-copy="cliente.html" type="button">Copiar enlace de clientes</button><button class="btn w sm" data-copy="conductor.html" type="button">Copiar enlace de conductores</button><button class="btn w sm" data-copy="panel.html" type="button">Copiar enlace del panel</button></div>
       </div>
     </section>
 
@@ -478,7 +478,7 @@
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, function () { prompt('Copia este enlace:', txt); });
     else prompt('Copia este enlace:', txt);
   }
-  $('enl-mot').onclick = function () { copiar(BASE + 'motero.html', $('enl-mot')); };
+  $('enl-mot').onclick = function () { copiar(BASE + 'conductor.html', $('enl-mot')); };
   function cambiar(id, estado) { sb.from('moteros').update({ estado: estado }).eq('id', id).then(function () { ultima = ''; cargar(); }); }
   function verDocs(id) {
     var m = motDe(id), cont = $('docs-' + id);
