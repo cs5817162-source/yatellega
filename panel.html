@@ -485,6 +485,8 @@
     var lista = [];
     function add(n, val) { if (!val) return; var ps = String(val).split('|'); ps.forEach(function (x, i) { lista.push([n + (ps.length > 1 ? (i ? ' (lado B)' : ' (lado A)') : ''), x]); }); }
     add('Foto del conductor', m.foto_selfie); add('Licencia', m.foto_licencia); add('Tarjeta de propiedad', m.foto_tarjeta_propiedad); add('SOAT', m.foto_soat); add('Tecnomecánica', m.foto_tecnomecanica);
+    add('Moto con la placa', m.foto_moto_placa); add('Moto, otro costado', m.foto_moto_lado);
+    add('Pasado judicial', m.foto_pasado_judicial);
     if (!lista.length) { cont.textContent = 'No subió fotos.'; return; }
     cont.textContent = 'Abriendo fotos…';
     sb.storage.from('documentos').createSignedUrls(lista.map(function (x) { return x[1]; }), 3600).then(function (r) {

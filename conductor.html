@@ -184,6 +184,11 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
           <div class="foto"><label class="bt">Tomar foto de la revisión<input type="file" accept="image/*" capture="environment" data-n="tecno"></label><span class="nom"></span></div>
         </div>
       </div>
+      <div class="doc">
+        <b>Pasado judicial</b>
+        <div class="ayuda">El certificado de la Policía Nacional. Lo saca gratis en la página de la Policía y le toma una foto o una captura de pantalla.</div>
+        <div class="foto"><label class="bt">Subir el certificado<input type="file" accept="image/*" data-n="judicial"></label><span class="nom"></span></div>
+      </div>
     </div>
 
     <div class="sec">
@@ -196,6 +201,18 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
       <input type="text" id="modelo" inputmode="numeric" maxlength="4" placeholder="Ej. 2024">
       <label for="color">Color</label>
       <input type="text" id="color" placeholder="Ej. Negro">
+
+      <div class="doc">
+        <b>Foto de la moto con la placa</b>
+        <div class="ayuda">Párate detrás de la moto, un poco de lado, y que en la foto se lea la placa y se vea ese costado.</div>
+        <div class="foto"><label class="bt">Tomar la foto<input type="file" accept="image/*" capture="environment" data-n="motoplaca"></label><span class="nom"></span></div>
+      </div>
+
+      <div class="doc">
+        <b>Foto del otro costado</b>
+        <div class="ayuda">La moto completa por el otro lado, para ver en qué estado está.</div>
+        <div class="foto"><label class="bt">Tomar la foto<input type="file" accept="image/*" capture="environment" data-n="motolado"></label><span class="nom"></span></div>
+      </div>
     </div>
 
     <div class="cas" id="acepto" role="checkbox" aria-checked="false" tabindex="0"><span class="caja"></span><span>Acepto los términos y que usen mis datos personales, según la ley de Colombia.</span></div>
@@ -414,10 +431,11 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
   function ok1() { return v('nombre').length >= 5 && /^\d{6,10}$/.test(v('cedula')) && /^3\d{9}$/.test(v('cel')) && /^\S+@\S+\.\S+$/.test(v('correo')) && v('dir').length >= 5 && v('barrio').length >= 3 && v('ciudad').length >= 3 && /^3\d{9}$/.test(v('nequi')) && archivos.selfie; }
   function soatOk() { var r = vigente($('soatv').value); return r === true || (r === null && archivos.soat); }
   function tecOk() { if (notec) return true; var r = vigente($('tecv').value); return r === true || (r === null && archivos.tecno); }
-  function ok2() { return vigente($('licv').value) === true && archivos.licencia && archivos.tarjeta && soatOk() && tecOk(); }
+  function ok2() { return vigente($('licv').value) === true && archivos.licencia && archivos.tarjeta && soatOk() && tecOk() && archivos.judicial; }
   function ok3() {
     var a = parseInt(v('modelo'), 10);
-    return /^[A-Z]{3}\d{2}[A-Z]$/.test(v('placa')) && v('marca') && v('modelo') && a >= 1990 && a <= hoy.getFullYear() + 1 && v('color');
+    return /^[A-Z]{3}\d{2}[A-Z]$/.test(v('placa')) && v('marca') && v('modelo') && a >= 1990 && a <= hoy.getFullYear() + 1 && v('color')
+      && archivos.motoplaca && archivos.motolado;
   }
   function progreso() {
     var s = $('prog').children;
@@ -453,8 +471,11 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
       ['f:tarjetaB', !!archivos.tarjetaB, 'Falta la foto de la tarjeta de propiedad, lado B (atrás).'],
       ['soatv', soatOk(), 'SOAT: pon una fecha de vencimiento vigente o sube la foto.'],
       ['tecv', tecOk(), 'Revisión técnico-mecánica: pon una fecha vigente, sube la foto, o marca que todavía no le toca.'],
+      ['f:judicial', !!archivos.judicial, 'Falta el certificado de pasado judicial.'],
       ['placa', /^[A-Z]{3}\d{2}[A-Z]$/.test(v('placa')), 'La placa va con formato ABC12D (3 letras, 2 números y 1 letra).'],
       ['marca', !!v('marca'), 'Escribe la marca de la moto.'],
+      ['f:motoplaca', !!archivos.motoplaca, 'Falta la foto de la moto donde se lea la placa.'],
+      ['f:motolado', !!archivos.motolado, 'Falta la foto del otro costado de la moto.'],
       ['modelo', (function () { var a = parseInt(v('modelo'), 10); return a >= 1990 && a <= hoy.getFullYear() + 1; })(), 'El modelo es el año de tu moto, por ejemplo 2024.'],
       ['color', !!v('color'), 'Escribe el color de la moto.'],
       ['acepto', !!acepto, 'Marca la casilla de aceptar los términos.']
@@ -495,7 +516,9 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
         licencia_vence: $('licv').value || null, soat_vence: $('soatv').value || null,
         tecnomecanica_vence: notec ? null : ($('tecv').value || null),
         foto_selfie: rutas.selfie || null, foto_licencia: rutas.licencia ? (rutas.licencia + (rutas.licenciaB ? '|' + rutas.licenciaB : '')) : null, foto_tarjeta_propiedad: rutas.tarjeta ? (rutas.tarjeta + (rutas.tarjetaB ? '|' + rutas.tarjetaB : '')) : null,
-        foto_soat: rutas.soat || null, foto_tecnomecanica: rutas.tecno || null
+        foto_soat: rutas.soat || null, foto_tecnomecanica: rutas.tecno || null,
+        foto_moto_placa: rutas.motoplaca || null, foto_moto_lado: rutas.motolado || null,
+        foto_pasado_judicial: rutas.judicial || null
       }).select().single();
     }).then(function (r) {
       $('enviar').disabled = false;
