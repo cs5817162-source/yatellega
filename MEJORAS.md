@@ -30,9 +30,11 @@ mostramos ninguna distancia** cuando le llega el pedido. Acepta a ciegas.
 
 **Qué hacer, en orden:**
 
-1. Mostrarle al conductor, antes de aceptar, a cuántos kilómetros está la
-   recogida y cuánto mide el viaje. Esto solo no cuesta nada y ya cambia
-   todo: puede decidir.
+1. ~~Mostrarle al conductor, antes de aceptar, a cuántos kilómetros está la
+   recogida y cuánto mide el viaje.~~ **Hecho.** La oferta ahora dice «A X
+   min (Y km) de distancia» y «Viaje: X min (Y km)», con la ruta dibujada
+   sobre el mapa por calles reales. Falta mostrar el mapa también mientras
+   va en camino, no solo al ofrecer.
 2. Ofrecer el pedido primero al conductor más cercano, en vez de a todos.
 3. Si el acercamiento pasa de cierta distancia, pagar un adicional. Que
    salga de la comisión de Ya te llega, no de un recargo al cliente.
