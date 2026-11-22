@@ -140,6 +140,7 @@
             <div style="flex:1">
               <input type="text" class="dir" placeholder="¿Dónde lo recogemos? Ej. Cra 5 # 10-20" autocomplete="off">
               <input type="text" class="bar" placeholder="Barrio, ej. Granada" autocomplete="off">
+              <input type="text" class="ref" placeholder="Referencia: casa, color del portón, qué hay al lado" autocomplete="off">
             </div>
             <button class="miub" data-i="1" type="button">Mi ubicación</button>
           </div>
@@ -148,6 +149,7 @@
             <div style="flex:1">
               <input type="text" class="dir" placeholder="¿Dónde lo entregamos? Ej. Calle 5 # 38-10" autocomplete="off">
               <input type="text" class="bar" placeholder="Barrio, ej. San Fernando" autocomplete="off">
+              <input type="text" class="ref" placeholder="Referencia: casa, color del portón, qué hay al lado" autocomplete="off">
             </div>
             <button class="miub" data-i="2" type="button">Mi ubicación</button>
           </div>
@@ -611,6 +613,8 @@
       direccion_entrega: val('f2', 'dir'), barrio_entrega: val('f2', 'bar') || null,
       lat_recogida: pts[1].lat, lng_recogida: pts[1].lng,
       lat_entrega: pts[2].lat, lng_entrega: pts[2].lng,
+      referencia_recogida: val('f1', 'ref') || null,
+      referencia_entrega: val('f2', 'ref') || null,
       forma_pago: pago, precio_cop: precio,
       ganancia_motero_cop: Math.round(precio * PARTE_CONDUCTOR)
     }).select().single().then(function (r) {

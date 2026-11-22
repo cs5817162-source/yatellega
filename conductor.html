@@ -20,6 +20,7 @@
   h2 { font-size:18px; margin:0 0 8px; font-weight:700; }
   .fila { display:flex; gap:10px; align-items:flex-start; margin:8px 0; font-size:16px; line-height:1.35; }
   .pt { width:12px; height:12px; border-radius:50%; margin-top:5px; flex:none; }
+  .refe { display:none; margin-top:6px; background:#FFF6E5; border-left:4px solid var(--n); border-radius:0 10px 10px 0; padding:8px 10px; font-size:15px; font-weight:600; color:#7A3E06; }
   .pago { display:flex; align-items:center; gap:10px; background:#FFF6E5; border-radius:12px; padding:12px; font-size:16px; font-weight:600; margin-top:10px; }
   .grande { width:100%; border:0; border-radius:16px; padding:17px; font-size:19px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:10px; }
   .grande:disabled { opacity:.6; }
@@ -312,7 +313,7 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     <div class="tarj dest">
       <div class="paso-t" id="t-r"></div>
       <h2>Ve a recoger el pedido</h2>
-      <div class="fila"><span class="pt" style="background:var(--n)"></span><span id="r-dir"></span></div>
+      <div class="fila"><span class="pt" style="background:var(--n)"></span><span><span id="r-dir"></span><span class="refe" id="r-ref"></span></span></div>
       <div class="mapas">
         <a target="_blank" rel="noopener" id="r-waze" href="#">Waze</a>
         <a target="_blank" rel="noopener" id="r-gmaps" href="#">Google Maps</a>
@@ -328,7 +329,7 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     <div class="tarj dest">
       <div class="paso-t" id="t-e"></div>
       <h2>Ve a entregar el pedido</h2>
-      <div class="fila"><span class="pt" style="background:#111827"></span><span id="e-dir"></span></div>
+      <div class="fila"><span class="pt" style="background:#111827"></span><span><span id="e-dir"></span><span class="refe" id="e-ref"></span></span></div>
       <div class="mapas">
         <a target="_blank" rel="noopener" id="e-waze" href="#">Waze</a>
         <a target="_blank" rel="noopener" id="e-gmaps" href="#">Google Maps</a>
@@ -386,6 +387,14 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
       : 'Te pagan en efectivo: cobra ' + fmt(ped.precio_cop) + ' al entregar';
   }
   function dirTxt(d, b) { return d + (b ? ', ' + b : '') + ', Cali'; }
+  // La referencia es lo que de verdad hace que la encuentre: "porton
+  // verde, al lado de la tienda". Va resaltada, no como letra chiquita.
+  function pintarRef(id, txt) {
+    var e = $(id);
+    if (!txt) { e.textContent = ''; e.style.display = 'none'; return; }
+    e.textContent = txt;
+    e.style.display = 'block';
+  }
   // Waze y Google Maps reciben las COORDENADAS del punto que marco el
   // cliente, no el texto de la direccion. En Cali una direccion escrita
   // puede caer a varias cuadras; el punto no se equivoca.
@@ -690,6 +699,7 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     if (s === 'aceptado' || s === 'en_camino' || s === 'en_recogida') {
       fr = { aceptado: 0, en_camino: 1, en_recogida: 2 }[s];
       $('r-dir').textContent = dirTxt(ped.direccion_recogida, ped.barrio_recogida);
+      pintarRef('r-ref', ped.referencia_recogida);
       enlaces('r', ped.direccion_recogida, ped.barrio_recogida, ped.lat_recogida, ped.lng_recogida);
       $('r-pago').textContent = textoPago();
       pintarR(); ver('recoger');
@@ -705,6 +715,7 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
   }
   function prepararEntrega(n) {
     $('e-dir').textContent = dirTxt(ped.direccion_entrega, ped.barrio_entrega);
+    pintarRef('e-ref', ped.referencia_entrega);
     enlaces('e', ped.direccion_entrega, ped.barrio_entrega, ped.lat_entrega, ped.lng_entrega);
     $('e-pago').textContent = textoPago();
     $('e-conf').classList.toggle('oculto', ped.forma_pago !== 'nequi');
