@@ -17,6 +17,8 @@
   .marca { width:18px; height:18px; border-radius:50%; border:3px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.45); }
   .ayuda { position:absolute; z-index:500; left:50%; bottom:10px; transform:translateX(-50%); background:#111827; color:#fff; border-radius:999px; padding:8px 16px; font-size:13px; font-weight:600; white-space:nowrap; }
   .miub { border:0; background:transparent; color:var(--n); font-weight:700; font-size:13px; cursor:pointer; font-family:inherit; flex:none; padding:8px 0 0; }
+  .gps-info { font-size:13px; color:var(--m); line-height:1.45; margin-top:8px; }
+  .gps-info b { color:var(--g); }
   .km { margin-top:12px; background:var(--c); border:1px solid var(--n); border-radius:12px; padding:10px 12px; font-size:14px; line-height:1.5; }
   /* Seguir la moto mientras viene */
   #mapa-seg { height:250px; border-radius:16px; overflow:hidden; border:1px solid #E5E7EB; }
@@ -150,6 +152,8 @@
             <button class="miub" data-i="2" type="button">Mi ubicación</button>
           </div>
         </div>
+
+        <div class="gps-info" id="gps-info"></div>
 
         <div class="pago">
           <p>¿Cómo vas a pagar?</p>
@@ -425,19 +429,45 @@
     return p;
   }
 
+  // El celular casi siempre da primero una posicion floja, sacada de las
+  // antenas o el wifi, que puede fallar cuadras. El GPS de verdad tarda
+  // unos segundos en enganchar. Por eso no tomamos la primera lectura:
+  // escuchamos varias y nos quedamos con la mas precisa.
+  function miUbicacion(i) {
+    enfocar(i);
+    if (!navigator.geolocation) {
+      $('gps-info').innerHTML = '<b>Este celular no deja usar la ubicación.</b> Toca el mapa para marcar el punto.';
+      return;
+    }
+    $('gps-info').textContent = 'Buscando tu ubicación… dale unos segundos para que agarre bien.';
+
+    var mejor = null, reloj = null, corte = null;
+    function listo() {
+      if (reloj !== null) { navigator.geolocation.clearWatch(reloj); reloj = null; }
+      clearTimeout(corte);
+      if (!mejor) {
+        $('gps-info').innerHTML = '<b>No pudimos tomar tu ubicación.</b> Activa el GPS y el permiso, o toca el mapa.';
+        return;
+      }
+      var m = Math.round(mejor.coords.accuracy);
+      poner(i, L.latLng(mejor.coords.latitude, mejor.coords.longitude));
+      map.setView([mejor.coords.latitude, mejor.coords.longitude], 18);
+      $('gps-info').innerHTML = m <= 25
+        ? 'Ubicación tomada con una precisión de unos <b>' + m + ' metros</b>. Si el punto no quedó en tu puerta, arrástralo.'
+        : '<b>El GPS está dando apenas ' + m + ' metros de precisión.</b> Sal a un sitio despejado y vuelve a tocar «Mi ubicación», o arrastra el punto hasta tu puerta.';
+    }
+
+    reloj = navigator.geolocation.watchPosition(function (p) {
+      if (!mejor || p.coords.accuracy < mejor.coords.accuracy) mejor = p;
+      if (p.coords.accuracy <= 20) listo();        // ya es bueno, no esperamos mas
+    }, function () { listo(); },
+       { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+
+    corte = setTimeout(listo, 9000);               // a los 9 segundos, lo mejor que haya
+  }
+
   document.querySelectorAll('.miub').forEach(function (b) {
-    b.addEventListener('click', function () {
-      var i = +b.dataset.i;
-      enfocar(i);
-      if (!navigator.geolocation) { $('err').textContent = 'Este celular no deja usar la ubicación. Toca el mapa.'; return; }
-      $('err').textContent = 'Buscando tu ubicación…';
-      navigator.geolocation.getCurrentPosition(function (p) {
-        $('err').textContent = '';
-        poner(i, L.latLng(p.coords.latitude, p.coords.longitude));
-      }, function () {
-        $('err').textContent = 'No pudimos tomar tu ubicación. Activa el GPS y el permiso, o toca el mapa.';
-      }, { enableHighAccuracy: true, timeout: 12000 });
-    });
+    b.addEventListener('click', function () { miUbicacion(+b.dataset.i); });
   });
 
   function iniciar() {
