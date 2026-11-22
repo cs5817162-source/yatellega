@@ -109,6 +109,7 @@ body.mapa #mapa-capa { display:block; }
   <div id="v-reg" class="oculto">
     <img src="logo.png" alt="Ya te llega" width="96" height="96" style="display:block;margin:4px auto 10px"><h1 style="text-align:center">Registro de conductor</h1>
     <p class="sub">Llena todo para poder recibir pedidos. Tus datos solo los usa Ya te llega.</p>
+    <div id="aviso-correo" style="background:#FFF6E5;border:2px solid #E8590C;border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:14px;line-height:1.5"></div>
     <div class="prog" id="prog"><span></span><span></span><span></span></div>
 
     <div class="sec">
@@ -333,7 +334,23 @@ body.mapa #mapa-capa { display:block; }
   function cargarMotero() {
     sb.from('moteros').select('*').eq('user_id', user.id).maybeSingle().then(function (r) {
       if (r.error) { $('v-carga').textContent = errMsg(r.error); return; }
-      if (!r.data) { ver('reg'); $('correo').value = user.email || ''; progreso(); return; }
+      if (!r.data) {
+        ver('reg');
+        $('correo').value = user.email || '';
+        // Aviso claro: muchas veces no hay que registrarse de nuevo, sino
+        // entrar con el correo que ya se uso la primera vez.
+        $('aviso-correo').innerHTML =
+          'Entraste con <b>' + esc(user.email || '') + '</b>.<br>' +
+          'Con este correo todavía no tienes registro de conductor.<br>' +
+          'Si ya te habías registrado, fue con otro correo: sal y entra con ese, ' +
+          'y vas directo a tu pantalla sin volver a llenar nada.' +
+          '<button type="button" id="otro-correo" style="display:block;width:100%;margin-top:12px;' +
+          'border:1.5px solid #E8590C;background:#fff;color:#E8590C;border-radius:12px;padding:12px;' +
+          'font-size:16px;font-weight:700;cursor:pointer;font-family:inherit">Entrar con otro correo</button>';
+        $('otro-correo').onclick = salir;
+        progreso();
+        return;
+      }
       mot = r.data; despuesDeCargar();
     });
   }

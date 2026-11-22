@@ -80,6 +80,7 @@
   <div id="reg">
     <img src="logo.png" alt="Ya te llega" width="96" height="96" style="display:block;margin:4px auto 10px"><h1 style="text-align:center">Crea tu cuenta</h1>
     <p class="sub">Para pedir tu moto te registras una sola vez.</p>
+    <div id="aviso-correo" style="background:#FFF6E5;border:2px solid #E8590C;border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:14px;line-height:1.5"></div>
     <div class="sec">
       <h2>Tus datos</h2>
       <label for="nombre">Nombre completo</label>
@@ -233,7 +234,19 @@
       $('cargando').style.display = 'none';
       if (r.error) { $('cargando').style.display = 'block'; $('cargando').textContent = errMsg(r.error); return; }
       if (r.data) { cli = r.data; iniciar(); }
-      else { $('reg').style.display = 'block'; $('correo').value = user.email || ''; }
+      else {
+        $('reg').style.display = 'block';
+        $('correo').value = user.email || '';
+        $('aviso-correo').innerHTML =
+          'Entraste con <b>' + esc(user.email || '') + '</b>.<br>' +
+          'Con este correo todavía no tienes cuenta de cliente.<br>' +
+          'Si ya te habías registrado, fue con otro correo: sal y entra con ese, ' +
+          'y vas directo a pedir sin volver a llenar nada.' +
+          '<button type="button" id="otro-correo" style="display:block;width:100%;margin-top:12px;' +
+          'border:1.5px solid #E8590C;background:#fff;color:#E8590C;border-radius:12px;padding:12px;' +
+          'font-size:16px;font-weight:700;cursor:pointer;font-family:inherit">Entrar con otro correo</button>';
+        $('otro-correo').onclick = salir;
+      }
     });
   }
 
