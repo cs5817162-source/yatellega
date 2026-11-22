@@ -39,6 +39,72 @@
     el.addEventListener('click', t);
     el.addEventListener('keydown', function (e) { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); t(); } });
   };
+  // ------------------------------------------------------------------
+  // SONIDOS
+  // Se generan en el momento, no hay archivos que descargar. Suenan al
+  // volumen que el celular ya tenga puesto: la app NUNCA lo sube. Eso
+  // importa porque el conductor va en moto, muchas veces con audifonos.
+  // ------------------------------------------------------------------
+  var ctx = null, repite = null;
+
+  function mudo() {
+    try { return localStorage.getItem('ytl-mudo') === '1'; } catch (e) { return false; }
+  }
+  window.estaMudo = mudo;
+  window.ponerMudo = function (s) {
+    try { localStorage.setItem('ytl-mudo', s ? '1' : '0'); } catch (e) {}
+    if (s) window.alertaRepetida(false);
+  };
+
+  // Los navegadores solo dejan sonar despues de que la persona toca algo.
+  // Por eso esto se llama al conectarse o al pedir.
+  window.prepararSonido = function () {
+    try {
+      if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') ctx.resume();
+    } catch (e) { ctx = null; }
+  };
+
+  function nota(hz, desde, dura, vol) {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(hz, desde);
+    g.gain.setValueAtTime(0.0001, desde);
+    g.gain.exponentialRampToValueAtTime(vol, desde + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, desde + dura);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(desde); o.stop(desde + dura + 0.03);
+  }
+
+  // Pedido nuevo: tres notas que suben, para que se oiga en la calle
+  window.sonarAlerta = function () {
+    if (mudo()) return;
+    if (navigator.vibrate) { try { navigator.vibrate([140, 80, 140]); } catch (e) {} }
+    if (!ctx) return;
+    var t = ctx.currentTime;
+    nota(784, t, 0.15, 0.26);
+    nota(1047, t + 0.16, 0.15, 0.26);
+    nota(1319, t + 0.32, 0.30, 0.26);
+  };
+
+  // Algo paso con tu pedido: dos notas suaves
+  window.sonarAviso = function () {
+    if (mudo()) return;
+    if (navigator.vibrate) { try { navigator.vibrate(90); } catch (e) {} }
+    if (!ctx) return;
+    var t = ctx.currentTime;
+    nota(659, t, 0.14, 0.18);
+    nota(988, t + 0.15, 0.26, 0.18);
+  };
+
+  // Mientras el pedido espera respuesta, sigue sonando cada 2,5 segundos
+  window.alertaRepetida = function (encendido) {
+    if (repite !== null) { clearInterval(repite); repite = null; }
+    if (!encendido) return;
+    window.sonarAlerta();
+    repite = setInterval(window.sonarAlerta, 2500);
+  };
+
   window.salir = function () { sb.auth.signOut().then(function () { location.reload(); }); };
   window.entrar = function (box, titulo, onOk) {
     var crear = false;

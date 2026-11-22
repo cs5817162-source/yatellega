@@ -255,7 +255,7 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     <button id="btn-loc" type="button" aria-label="Mi ubicación"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1F2937" stroke-width="2" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8z"/></svg></button>
     <div id="aviso"></div>
   </div>
-  <div id="menu" class="oculto"><div class="mi"><img src="logo.png" alt="" width="56" height="56"><div><b>Ya te llega</b><div class="mc" id="menu-c"></div></div></div><button class="grande p" type="button" id="menu-gan">Mis ganancias</button><button class="grande s" type="button" onclick="salir()">Cerrar sesión</button><button class="grande s" type="button" id="menu-x">Cerrar menú</button></div>
+  <div id="menu" class="oculto"><div class="mi"><img src="logo.png" alt="" width="56" height="56"><div><b>Ya te llega</b><div class="mc" id="menu-c"></div></div></div><button class="grande p" type="button" id="menu-gan">Mis ganancias</button><button class="grande s" type="button" id="menu-son">Sonido: activado</button><button class="grande s" type="button" onclick="salir()">Cerrar sesión</button><button class="grande s" type="button" id="menu-x">Cerrar menú</button></div>
 
   <div id="gan" class="oculto">
     <div class="gan-top">
@@ -603,7 +603,12 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
   function conectar(on) {
     return sb.from('moteros').update({ conectado: on }).eq('id', mot.id).then(function (r) { if (!r.error) mot.conectado = on; return r; });
   }
-  $('conectar').onclick = function () { conectar(true).then(function () { $('esp-msg').textContent = ''; ver('espera'); buscar(); }); };
+  // Al tocar conectarse se habilita el sonido: los navegadores solo dejan
+  // sonar despues de que la persona toca algo en la pantalla.
+  $('conectar').onclick = function () {
+    prepararSonido();
+    conectar(true).then(function () { $('esp-msg').textContent = ''; ver('espera'); buscar(); });
+  };
   $('desconectar').onclick = function () { conectar(false).then(function () { ver('off'); }); };
 
   function buscar() {
@@ -656,16 +661,20 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     // Despues de ver(), que es donde se prende el mapa, y con un respiro
     // para que ya tenga su tamaño antes de encuadrar la ruta.
     if (window.__ruta) setTimeout(function () { window.__ruta(yo, rec, ent); }, 150);
+    // Suena y vibra mientras el pedido espera respuesta, no una sola vez:
+    // el conductor va manejando y no esta mirando la pantalla.
+    alertaRepetida(true);
     var t = 30; $('barra').style.width = '100%';
     clearInterval(tmr);
     tmr = setInterval(function () {
       t--; $('barra').style.width = (t / 30 * 100) + '%';
-      if (t <= 0) { clearInterval(tmr); saltados[p.id] = 1; ped = null; ver('espera'); }
+      if (t <= 0) { clearInterval(tmr); alertaRepetida(false); saltados[p.id] = 1; ped = null; ver('espera'); }
     }, 1000);
   }
-  $('rechazar').onclick = function () { clearInterval(tmr); if (ped) saltados[ped.id] = 1; ped = null; ver('espera'); };
+  $('rechazar').onclick = function () { clearInterval(tmr); alertaRepetida(false); if (ped) saltados[ped.id] = 1; ped = null; ver('espera'); };
   $('aceptar').onclick = function () {
     clearInterval(tmr);
+    alertaRepetida(false);
     var id = ped.id;
     sb.rpc('tomar_pedido', { p_id: id }).then(function (r) {
       if (r.data === true) {
@@ -884,6 +893,18 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     if (window.sb) sb.auth.getSession().then(function (r) { var s = r.data && r.data.session; $('menu-c').textContent = s ? s.user.email : ''; });
   });
   $('menu-x').addEventListener('click', function () { $('menu').classList.add('oculto'); });
+
+  // Silenciar: la app nunca toca el volumen del celular, pero el
+  // conductor puede apagar del todo el aviso si le estorba.
+  function pintarSonido() {
+    $('menu-son').textContent = estaMudo() ? 'Sonido: silenciado' : 'Sonido: activado';
+  }
+  $('menu-son').addEventListener('click', function () {
+    ponerMudo(!estaMudo());
+    if (!estaMudo()) { prepararSonido(); sonarAviso(); }
+    pintarSonido();
+  });
+  pintarSonido();
 })();
 </script>
 

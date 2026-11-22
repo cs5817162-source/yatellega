@@ -527,6 +527,9 @@
   function val(id, c) { return $(id).querySelector('.' + c).value.trim(); }
 
   $('pedir').addEventListener('click', function () {
+    // Aqui se habilita el sonido: el navegador solo deja sonar despues
+    // de que la persona toca algo.
+    prepararSonido();
     var err = $('err'), ok = $('ok');
     ok.style.display = 'none';
     if (enviando) return;
@@ -660,8 +663,24 @@
     $('seg-est').innerHTML = txt + '<br><span style="color:var(--m);font-size:13px">Ubicación ' + hace(p.pos_en) + '.</span>';
   }
 
+  // Avisar cuando algo pasa con el pedido: que ya hay moto, que llegó a
+  // recoger, que va en camino, que lo entregaron. El cliente no está
+  // mirando la pantalla todo el tiempo.
+  var estadoAnterior = {}, primeraMirada = true;
+  function avisarCambios(ps) {
+    var cambio = null;
+    ps.forEach(function (p) {
+      var antes = estadoAnterior[p.id];
+      if (antes && antes !== p.estado) cambio = p;
+      estadoAnterior[p.id] = p.estado;
+    });
+    if (primeraMirada) { primeraMirada = false; return; }  // al abrir no suena
+    if (cambio) sonarAviso();
+  }
+
   function pintar(ps, cods) {
     var l = $('lista');
+    avisarCambios(ps);
     seguir(ps.filter(activo)[0]);
     if (!ps.length) { l.innerHTML = '<div class="vacio">Todavía no tienes pedidos.</div>'; return; }
     l.innerHTML = ps.map(function (p) {
