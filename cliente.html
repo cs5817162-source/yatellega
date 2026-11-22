@@ -257,6 +257,69 @@
     });
   });
 
+  // ------------- Direcciones: del mapa al texto y al reves -------------
+  // Usamos el buscador de OpenStreetMap, que es gratis y no necesita clave.
+  var CALI_CAJA = '-76.62,3.53,-76.44,3.33';   // la zona donde buscamos
+
+  function campo(i, clase) { return $('f' + i).querySelector('.' + clase); }
+
+  // De unas coordenadas a una direccion escrita
+  function buscarDireccion(i, ll) {
+    var u = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18' +
+            '&accept-language=es&lat=' + ll.lat + '&lon=' + ll.lng;
+    fetch(u).then(function (r) { return r.json(); }).then(function (d) {
+      var a = (d && d.address) || {};
+      var via = [a.road, a.house_number].filter(Boolean).join(' # ');
+      var barrio = a.neighbourhood || a.suburb || a.quarter || a.city_district || '';
+      var dir = campo(i, 'dir'), bar = campo(i, 'bar');
+      if (via && !dir.dataset.escrito) dir.value = via;
+      else if (!dir.value.trim()) dir.value = via || 'Punto marcado en el mapa';
+      if (barrio && !bar.value.trim()) bar.value = barrio;
+    }).catch(function () {
+      var dir = campo(i, 'dir');
+      if (!dir.value.trim()) dir.value = 'Punto marcado en el mapa';
+    });
+  }
+
+  // De una direccion escrita a un punto en el mapa.
+  // El numero de la casa (el "#55-23") confunde al buscador, asi que
+  // probamos por pasos: direccion completa, luego solo la via, luego solo
+  // el barrio. Con cualquiera que pegue el mapa ya queda cerca, y el
+  // cliente termina de afinar arrastrando el punto.
+  var buscando = { 1: false, 2: false }, ultimaBusqueda = { 1: '', 2: '' };
+
+  function buscarEnMapa(i) {
+    var dir = campo(i, 'dir').value.trim(), bar = campo(i, 'bar').value.trim();
+    if (buscando[i] || dir.length < 5) return;
+    if (/^punto marcado/i.test(dir)) return;      // lo escribio el mapa, no hay que buscarlo
+    var firma = dir + '|' + bar;
+    if (firma === ultimaBusqueda[i]) return;      // ya lo buscamos, no repetir
+    ultimaBusqueda[i] = firma;
+
+    var via = dir.split('#')[0].split(/\s+n[o°]\.?\s*/i)[0].trim();
+    var intentos = [];
+    intentos.push([dir, bar].filter(Boolean).join(', '));
+    if (via && via !== dir) intentos.push([via, bar].filter(Boolean).join(', '));
+    if (bar) intentos.push(bar);
+
+    buscando[i] = true;
+    (function siguiente(n) {
+      if (n >= intentos.length) { buscando[i] = false; return; }
+      var q = intentos[n] + ', Cali, Valle del Cauca, Colombia';
+      var u = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1' +
+              '&countrycodes=co&accept-language=es&bounded=1&viewbox=' + CALI_CAJA +
+              '&q=' + encodeURIComponent(q);
+      fetch(u).then(function (r) { return r.json(); }).then(function (l) {
+        if (l && l.length) {
+          buscando[i] = false;
+          poner(i, L.latLng(parseFloat(l[0].lat), parseFloat(l[0].lon)), false);
+        } else {
+          setTimeout(function () { siguiente(n + 1); }, 1100);  // sin apurar el servicio
+        }
+      }).catch(function () { buscando[i] = false; });
+    })(0);
+  }
+
   // ---------------- Mapa y precio por distancia ----------------
   function iniciarMapa() {
     if (map) { map.invalidateSize(); return; }
@@ -269,12 +332,23 @@
     setTimeout(function () { map.invalidateSize(); }, 250);
   }
 
-  function poner(i, ll) {
+  // escribir = true cuando el punto viene del mapa o del GPS, para que la
+  // direccion se llene sola. false cuando el punto vino de la direccion.
+  function poner(i, ll, escribir) {
     pts[i] = ll;
     if (marcas[i]) map.removeLayer(marcas[i]);
     marcas[i] = L.marker(ll, {
+      draggable: true,
       icon: L.divIcon({ className: '', html: '<div class="marca" style="background:' + COLOR_PT[i] + '"></div>', iconSize: [18, 18], iconAnchor: [9, 9] })
     }).addTo(map);
+    // Se puede arrastrar para corregir a mano sin volver a escribir nada
+    marcas[i].on('dragend', function (e) {
+      pts[i] = e.target.getLatLng();
+      campo(i, 'dir').dataset.escrito = '';
+      buscarDireccion(i, pts[i]);
+      calcular();
+    });
+    if (escribir !== false) buscarDireccion(i, ll);
     var otro = i === 1 ? 2 : 1;
     if (!pts[otro]) enfocar(otro);
     encuadrar(); calcular(); ayuda();
@@ -317,8 +391,14 @@
       $('precio-b').textContent = 'desde ' + fmt(TARIFA_MINIMA);
       return null;
     }
+    if (k < 0.15) {
+      $('km').innerHTML = '<b>Los dos puntos están en el mismo sitio.</b><br>Marca aparte dónde recogemos y dónde entregamos.';
+      $('precio-b').textContent = 'desde ' + fmt(TARIFA_MINIMA);
+      return null;
+    }
     var p = precioDe(k);
-    $('km').innerHTML = 'Son unos <b>' + (Math.round(k * 10) / 10).toString().replace('.', ',') + ' km</b> de recorrido.<br>El mandado le queda en <b>' + fmt(p) + '</b>.';
+    $('km').innerHTML = 'Son unos <b>' + (Math.round(k * 10) / 10).toString().replace('.', ',') + ' km</b> de recorrido.<br>El mandado le queda en <b>' + fmt(p) + '</b>.' +
+      '<br><span style="color:var(--m);font-size:13px">Si el punto no quedó exacto, arrástralo en el mapa.</span>';
     $('precio-b').textContent = fmt(p);
     return p;
   }
@@ -356,8 +436,15 @@
   });
 
   ['f1', 'f2'].forEach(function (id) {
-    $(id).querySelectorAll('input').forEach(function (i) {
-      i.addEventListener('focus', function () { enfocar(id === 'f1' ? 1 : 2); });
+    var n = id === 'f1' ? 1 : 2;
+    $(id).querySelectorAll('input').forEach(function (inp) {
+      inp.addEventListener('focus', function () { enfocar(n); });
+      // Si la persona escribe, mandamos nosotros: el mapa no le pisa el texto
+      inp.addEventListener('input', function () {
+        if (inp.classList.contains('dir')) inp.dataset.escrito = '1';
+      });
+      // Al terminar de escribir, el mapa se mueve a esa direccion
+      inp.addEventListener('blur', function () { buscarEnMapa(n); });
     });
   });
 

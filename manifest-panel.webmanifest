@@ -1,9 +1,10 @@
 {
+  "id": "/yatellega/panel",
   "name": "Ya te llega Panel",
   "short_name": "Panel",
   "description": "Administración de Ya te llega",
   "start_url": "panel.html",
-  "scope": "./",
+  "scope": "panel.html",
   "display": "standalone",
   "background_color": "#E8590C",
   "theme_color": "#E8590C",

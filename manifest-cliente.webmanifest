@@ -1,9 +1,10 @@
 {
+  "id": "/yatellega/cliente",
   "name": "Ya te llega",
   "short_name": "Ya te llega",
   "description": "Pide tu moto para mandados en Cali",
   "start_url": "cliente.html",
-  "scope": "./",
+  "scope": "cliente.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#E8590C",

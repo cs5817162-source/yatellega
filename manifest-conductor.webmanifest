@@ -1,9 +1,10 @@
 {
+  "id": "/yatellega/conductor",
   "name": "Ya te llega Conductor",
   "short_name": "Conductor",
   "description": "Recibe y lleva los mandados de Ya te llega",
   "start_url": "conductor.html",
-  "scope": "./",
+  "scope": "conductor.html",
   "display": "standalone",
   "background_color": "#1F2937",
   "theme_color": "#1F2937",
