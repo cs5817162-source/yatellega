@@ -20,6 +20,7 @@
   h2 { font-size:18px; margin:0 0 8px; font-weight:700; }
   .fila { display:flex; gap:10px; align-items:flex-start; margin:8px 0; font-size:16px; line-height:1.35; }
   .pt { width:12px; height:12px; border-radius:50%; margin-top:5px; flex:none; }
+  .ayuda-f { font-size:13px; color:#6B7280; margin:2px 0 6px; line-height:1.4; }
   .refe { display:none; margin-top:6px; background:#FFF6E5; border-left:4px solid var(--n); border-radius:0 10px 10px 0; padding:8px 10px; font-size:15px; font-weight:600; color:#7A3E06; }
   .pago { display:flex; align-items:center; gap:10px; background:#FFF6E5; border-radius:12px; padding:12px; font-size:16px; font-weight:600; margin-top:10px; }
   .grande { width:100%; border:0; border-radius:16px; padding:17px; font-size:19px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:10px; }
@@ -301,7 +302,7 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
       <div class="fila"><span class="pt" style="background:#111827"></span><span><b id="o-viaje">Entregar</b><br><span id="o-ent"></span></span></div>
       <div class="fila"><span id="o-serv"></span></div>
       <div class="pago" id="o-pago"></div>
-      <div style="margin-top:10px">Tu ganancia (85%): <span class="gan" id="o-gan"></span></div>
+      <div style="margin-top:10px">Tu ganancia: <span class="gan" id="o-gan"></span></div>
       <div class="tiempo"><div id="barra"></div></div>
     </div>
     <button class="grande p" id="aceptar" type="button">Aceptar</button>
@@ -341,6 +342,9 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
       <div id="e-conf" class="oculto">
         <div class="cas" id="cas" role="checkbox" aria-checked="false" tabindex="0"><span class="caja"></span>Confirmo que el pago por Nequi me llegó</div>
       </div>
+      <div style="margin-top:12px;font-weight:600">Foto de lo que entregaste</div>
+      <div class="ayuda-f">Que se vea el pedido ya entregado: en la puerta o en las manos del cliente. Es obligatoria.</div>
+      <div class="foto"><label class="bt">Tomar la foto<input type="file" accept="image/*" capture="environment" id="foto-ent"></label><span class="nom" id="foto-nom"></span></div>
       <div style="margin-top:12px;font-weight:600">Código de entrega del cliente</div>
       <input type="text" id="codigo" inputmode="numeric" maxlength="4" placeholder="----" autocomplete="off">
       <div class="err" id="err" role="alert"></div>
@@ -367,7 +371,7 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
   var vistas = ['carga', 'reg', 'rev', 'off', 'espera', 'oferta', 'recoger', 'entregar', 'fin'];
   var user = null, mot = null, ped = null, tmr = null, actual = 'carga', fr = 0, fe = 0, nconf = false, saltados = {};
   var archivos = {}, acepto = false, notec = false;
-  var SNOM = { paquete: 'Paquete', medicamentos: 'Medicamentos', comida: 'Comida', productos: 'Productos' };
+  var SNOM = { paquete: 'Mandado', medicamentos: 'Medicamentos', comida: 'Comida', productos: 'Productos' };
   var ACTIVOS = ['aceptado', 'en_camino', 'en_recogida', 'recogido', 'en_entrega'];
   var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
 
@@ -713,7 +717,47 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     $('t-r').textContent = t[fr]; $('recogi').textContent = b[fr];
     var s = $('pasos-r').children; for (var i = 0; i < 3; i++) s[i].classList.toggle('ok', i <= fr);
   }
+  // ---------- Foto de entrega ----------
+  var cerrando = false, fotoEnt = null;
+
+  // Las fotos del celular pesan 3 a 5 MB. Se reducen a 1280 px antes de
+  // subirlas: se ven bien y gastan una fraccion de datos del conductor.
+  function reducir(file) {
+    return new Promise(function (res) {
+      var img = new Image(), url = URL.createObjectURL(file);
+      img.onload = function () {
+        var k = Math.min(1, 1280 / Math.max(img.width, img.height));
+        var c = document.createElement('canvas');
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob(function (b) { URL.revokeObjectURL(url); res(b || file); }, 'image/jpeg', 0.72);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); res(file); };
+      img.src = url;
+    });
+  }
+
+  function subirFotoEntrega() {
+    return reducir(fotoEnt).then(function (blob) {
+      var path = user.id + '/entrega-' + ped.id + '-' + Date.now() + '.jpg';
+      return sb.storage.from('documentos').upload(path, blob, { contentType: 'image/jpeg' }).then(function (r) {
+        if (r.error) throw { fotoFallo: true };
+        return sb.rpc('guardar_foto_entrega', { p_id: String(ped.id), p_path: path });
+      }).then(function (r) {
+        if (!r || r.error || r.data !== true) throw { fotoFallo: true };
+      });
+    });
+  }
+
+  $('foto-ent').addEventListener('change', function () {
+    var f = this.files && this.files[0];
+    fotoEnt = f || null;
+    $('foto-nom').textContent = f ? '✓ Foto lista' : '';
+    $('err').textContent = '';
+  });
+
   function prepararEntrega(n) {
+    fotoEnt = null; $('foto-ent').value = ''; $('foto-nom').textContent = ''; cerrando = false;
     $('e-dir').textContent = dirTxt(ped.direccion_entrega, ped.barrio_entrega);
     pintarRef('e-ref', ped.referencia_entrega);
     enlaces('e', ped.direccion_entrega, ped.barrio_entrega, ped.lat_entrega, ped.lng_entrega);
@@ -757,8 +801,15 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     if (ped.forma_pago === 'nequi' && !nconf) { e.textContent = 'Marca que el pago por Nequi te llegó.'; return; }
     var cod = $('codigo').value.trim();
     if (!/^\d{4}$/.test(cod)) { e.textContent = 'Escribe el código de 4 números que te da el cliente.'; return; }
-    e.textContent = 'Cerrando…';
-    sb.rpc('entregar_pedido', { p_id: ped.id, p_codigo: cod, p_pago_ok: ped.forma_pago === 'nequi' ? nconf : true }).then(function (r) {
+    if (!fotoEnt) { e.textContent = 'Falta la foto de la entrega. Tómala antes de cerrar.'; return; }
+    if (cerrando) return;
+    cerrando = true;
+    e.textContent = 'Subiendo la foto…';
+    subirFotoEntrega().then(function () {
+      e.textContent = 'Cerrando…';
+      return sb.rpc('entregar_pedido', { p_id: ped.id, p_codigo: cod, p_pago_ok: ped.forma_pago === 'nequi' ? nconf : true });
+    }).then(function (r) {
+      cerrando = false;
       var x = r.data;
       if (x === 'ok') {
         e.textContent = '';
@@ -768,6 +819,11 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
       } else if (x === 'codigo') e.textContent = 'El código no coincide. Pídeselo de nuevo al cliente.';
       else if (x === 'pago') e.textContent = 'Marca que el pago por Nequi te llegó.';
       else e.textContent = 'No se pudo cerrar la entrega. Inténtalo de nuevo.';
+    }).catch(function (x) {
+      cerrando = false;
+      e.textContent = (x && x.fotoFallo)
+        ? 'No se pudo subir la foto. Revisa que tengas datos o wifi e inténtalo de nuevo.'
+        : 'No se pudo cerrar la entrega. Inténtalo de nuevo.';
     });
   };
   $('otra').onclick = function () { ped = null; ver('espera'); buscar(); };

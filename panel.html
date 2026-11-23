@@ -220,7 +220,7 @@
         <div>Ciudad</div><div>Cali, Colombia</div>
         <div>Horario</div><div>7:00 a. m. a 10:00 p. m., todos los días</div>
         <div>Precio de prueba</div><div>$7.500 por mandado (fijo mientras armamos las tarifas por distancia)</div>
-        <div>Reparto</div><div>85 % para el conductor y 15 % para Ya te llega</div>
+        <div>Reparto</div><div>A Ya te llega le queda un margen fijo por pedido (hoy $1.800); el resto es del conductor</div>
         <div>Formas de pago</div><div>Efectivo y Nequi</div>
       </div></div>
       <div class="card"><h3>Enlaces para compartir</h3><div class="sub">Cópialos y mándalos por WhatsApp.</div>
@@ -250,7 +250,7 @@
 (function () {
   var D = { mot: [], cli: [], ped: [], inc: [] };
   var ultima = '', vista = 'vivo', per = 1, mF = 'todos', iF = 'abiertas', map = null;
-  var SNOM = { paquete: 'Paquete', medicamentos: 'Medicamentos', comida: 'Comida', productos: 'Productos' };
+  var SNOM = { paquete: 'Mandado', medicamentos: 'Medicamentos', comida: 'Comida', productos: 'Productos' };
   var ETQ = { nuevo: ['Sin conductor', 'r'], aceptado: ['Asignado', 'n'], en_camino: ['En camino', 'n'], en_recogida: ['Recogiendo', 'n'], recogido: ['Recogido', 'n'], en_entrega: ['Entregando', 'n'], entregado: ['Entregado', 'v'], cancelado: ['Cancelado', 'a'] };
   var BASE = location.href.replace(/[^\/]*$/, '');
 

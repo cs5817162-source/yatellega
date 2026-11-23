@@ -23,6 +23,8 @@
   /* Seguir la moto mientras viene */
   #mapa-seg { height:250px; border-radius:16px; overflow:hidden; border:1px solid #E5E7EB; }
   .seg-est { background:var(--c); border:1px solid var(--n); border-radius:12px; padding:11px 13px; font-size:15px; line-height:1.5; margin:8px 0 14px; }
+  .ped .vfoto { margin-top:8px; border:1.5px solid var(--n); color:var(--n); background:#fff; border-radius:10px; padding:8px 12px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .fent img { width:100%; border-radius:12px; margin-top:8px; display:block; }
   .moto-viva { width:38px; height:38px; border-radius:50%; background:var(--n); border:3px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; }
   .moto-viva svg { width:22px; height:22px; }
   .cab { position:absolute; z-index:500; top:10px; left:10px; right:10px; background:#fff; border-radius:14px; padding:8px 12px; display:flex; align-items:center; gap:10px; box-shadow:0 1px 4px rgba(0,0,0,.12); }
@@ -128,7 +130,7 @@
       <div class="pag on" id="p-pedir">
         <h1>¿Qué llevamos hoy?</h1>
         <div class="chips" id="chips">
-          <button class="chip sel" type="button">Paquete</button>
+          <button class="chip sel" type="button">Mandado</button>
           <button class="chip" type="button">Medicamentos</button>
           <button class="chip" type="button">Comida</button>
           <button class="chip" type="button">Productos</button>
@@ -208,21 +210,19 @@
   // Los numeros de aqui abajo son solo el respaldo: sirven para mostrar
   // algo mientras cargan los de verdad, o si se cae la conexion.
   // ---------------------------------------------------------------
-  var TARIFA_BASE = 4500;       // vale cualquier mandado, asi sea al lado
-  var TARIFA_KM = 800;          // se suma por cada kilometro recorrido
-  var TARIFA_MINIMA = 5000;     // nunca se cobra menos que esto
-  var FACTOR_RUTA = 1.3;        // las motos no van en linea recta
-  var PARTE_CONDUCTOR = 0.85;   // 85 % para el conductor, 15 % para Ya te llega
+  var TRAMOS = [[3, 8000], [5, 9500], [7, 11500], [10, 14000]];  // [hasta cuantos km, precio]
+  var MARGEN = 1800;           // lo que le queda a Ya te llega por pedido
+  var MAX_KM = 10;             // mas de esto se cotiza aparte
+  var FACTOR_RUTA = 1.3;       // las motos no van en linea recta
 
   function cargarTarifas() {
     sb.from('tarifas').select('*').eq('id', 1).maybeSingle().then(function (r) {
       if (r.error || !r.data) return;   // se queda con los numeros de respaldo
       var t = r.data;
-      TARIFA_BASE = t.base_cop;
-      TARIFA_KM = t.por_km_cop;
-      TARIFA_MINIMA = t.minima_cop;
+      if (Array.isArray(t.tramos) && t.tramos.length) TRAMOS = t.tramos;
+      if (t.margen_cop !== null && t.margen_cop !== undefined) MARGEN = t.margen_cop;
+      if (t.max_km) MAX_KM = t.max_km;
       FACTOR_RUTA = Number(t.factor_ruta);
-      PARTE_CONDUCTOR = Number(t.parte_conductor);
       calcular();
     });
   }
@@ -231,9 +231,9 @@
   var map = null, puntoActivo = 1, pts = { 1: null, 2: null }, marcas = { 1: null, 2: null };
   var COLOR_PT = { 1: '#E8590C', 2: '#111827' };
 
-  var user = null, cli = null, pago = null, servicio = 'Paquete', enviando = false;
-  var SERV = { 'Paquete': 'paquete', 'Medicamentos': 'medicamentos', 'Comida': 'comida', 'Productos': 'productos' };
-  var SNOM = { paquete: 'Paquete', medicamentos: 'Medicamentos', comida: 'Comida', productos: 'Productos' };
+  var user = null, cli = null, pago = null, servicio = 'Mandado', enviando = false;
+  var SERV = { 'Mandado': 'paquete', 'Medicamentos': 'medicamentos', 'Comida': 'comida', 'Productos': 'productos' };
+  var SNOM = { paquete: 'Mandado', medicamentos: 'Medicamentos', comida: 'Comida', productos: 'Productos' };
   var ETQ = { nuevo: 'Buscando moto', aceptado: 'Moto asignada', en_camino: 'La moto va a recoger', en_recogida: 'La moto llegó a recoger', recogido: 'Pedido recogido', en_entrega: 'La moto va a entregar', entregado: 'Entregado', cancelado: 'Cancelado' };
 
   entrar($('auth'), '<span style="color:#E8590C">Ya</span>Te<span style="color:#E8590C">Llega</span> · Pedir moto', function (u) {
@@ -440,23 +440,30 @@
   }
 
   function precioDe(k) {
-    var p = TARIFA_BASE + TARIFA_KM * k;
-    return Math.max(TARIFA_MINIMA, Math.round(p / 100) * 100);
+    for (var i = 0; i < TRAMOS.length; i++) { if (k <= TRAMOS[i][0]) return TRAMOS[i][1]; }
+    return null;   // pasa de todos los tramos: se cotiza aparte
   }
 
   function calcular() {
     var k = kmRecorrido();
     if (k === null) {
       $('km').textContent = 'Marca en el mapa dónde recogemos y dónde entregamos para ver el precio.';
-      $('precio-b').textContent = 'desde ' + fmt(TARIFA_MINIMA);
+      $('precio-b').textContent = 'desde ' + fmt(TRAMOS[0][1]);
       return null;
     }
     if (k < 0.15) {
       $('km').innerHTML = '<b>Los dos puntos están en el mismo sitio.</b><br>Marca aparte dónde recogemos y dónde entregamos.';
-      $('precio-b').textContent = 'desde ' + fmt(TARIFA_MINIMA);
+      $('precio-b').textContent = 'desde ' + fmt(TRAMOS[0][1]);
       return null;
     }
-    var p = precioDe(k);
+    var p = (k > MAX_KM) ? null : precioDe(k);
+    if (p === null) {
+      // Mas de 10 km: el plan dice que se cotiza aparte, asi que no se pide desde aqui
+      $('km').innerHTML = 'Son unos <b>' + (Math.round(k * 10) / 10).toString().replace('.', ',') + ' km</b>. ' +
+        '<b>Pasa de ' + MAX_KM + ' km</b>, y esos recorridos los cotizamos aparte. Escríbenos para darte el precio.';
+      $('precio-b').textContent = 'Cotizar';
+      return null;
+    }
     $('km').innerHTML = 'Son unos <b>' + (Math.round(k * 10) / 10).toString().replace('.', ',') + ' km</b> de recorrido.<br>El mandado le queda en <b>' + fmt(p) + '</b>.' +
       '<br><span style="color:var(--m);font-size:13px">Si el punto no quedó exacto, arrástralo en el mapa.</span>';
     $('precio-b').textContent = fmt(p);
@@ -602,7 +609,10 @@
     }
     var precio = calcular();
     if (precio === null) {
-      err.textContent = 'Marca en el mapa dónde recogemos y dónde entregamos, así sabemos cuánto vale.';
+      var kk = kmRecorrido();
+      err.textContent = (kk !== null && kk > MAX_KM)
+        ? 'Ese recorrido pasa de ' + MAX_KM + ' km y se cotiza aparte. Escríbenos para darte el precio.'
+        : 'Marca en el mapa dónde recogemos y dónde entregamos, así sabemos cuánto vale.';
       return;
     }
     err.textContent = 'Enviando tu pedido…';
@@ -616,7 +626,7 @@
       referencia_recogida: val('f1', 'ref') || null,
       referencia_entrega: val('f2', 'ref') || null,
       forma_pago: pago, precio_cop: precio,
-      ganancia_motero_cop: Math.round(precio * PARTE_CONDUCTOR)
+      ganancia_motero_cop: precio - MARGEN
     }).select().single().then(function (r) {
       enviando = false; $('pedir').disabled = false;
       if (r.error) { err.textContent = errMsg(r.error); return; }
@@ -748,12 +758,24 @@
       var cl = p.estado === 'entregado' ? ' v' : p.estado === 'cancelado' ? ' r' : '';
       var cod = (activo(p) && cods[p.id]) ? '<div class="cod">Tu código de entrega<b>' + esc(cods[p.id]) + '</b>Dáselo al conductor cuando te entregue.</div>' : '';
       var can = p.estado === 'nuevo' ? '<br><button type="button" data-can="' + p.id + '">Cancelar pedido</button>' : '';
+      var fot = (p.estado === 'entregado' && p.foto_entrega) ? '<br><button type="button" class="vfoto" data-foto="' + esc(p.foto_entrega) + '" data-id="' + p.id + '">Ver la foto de la entrega</button><div class="fent" id="fent-' + p.id + '"></div>' : '';
       return '<div class="ped"><span class="est' + cl + '">' + esc(ETQ[p.estado] || p.estado) + '</span><br><b>' + esc(SNOM[p.servicio] || p.servicio) + '</b> · ' + (p.forma_pago === 'nequi' ? 'Nequi' : 'Efectivo') + ' · ' + fmt(p.precio_cop) +
         '<br>Recoger: ' + esc(p.direccion_recogida) + (p.barrio_recogida ? ', ' + esc(p.barrio_recogida) : '') +
-        '<br>Entregar: ' + esc(p.direccion_entrega) + (p.barrio_entrega ? ', ' + esc(p.barrio_entrega) : '') + cod + can + '</div>';
+        '<br>Entregar: ' + esc(p.direccion_entrega) + (p.barrio_entrega ? ', ' + esc(p.barrio_entrega) : '') + cod + can + fot + '</div>';
     }).join('');
   }
   document.addEventListener('click', function (e) {
+    var ft = e.target && e.target.dataset && e.target.dataset.foto;
+    if (ft) {
+      var caja = document.getElementById('fent-' + e.target.dataset.id);
+      if (caja.firstChild) { caja.innerHTML = ''; return; }          // segundo toque: la cierra
+      caja.textContent = 'Abriendo la foto…';
+      sb.storage.from('documentos').createSignedUrl(ft, 3600).then(function (r) {
+        if (r.error || !r.data) { caja.textContent = 'No se pudo abrir la foto. Inténtalo de nuevo.'; return; }
+        caja.innerHTML = '<img src="' + r.data.signedUrl + '" alt="Foto de la entrega">';
+      });
+      return;
+    }
     var id = e.target && e.target.dataset && e.target.dataset.can;
     if (!id) return;
     e.target.disabled = true;
