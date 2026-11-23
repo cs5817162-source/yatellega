@@ -212,7 +212,8 @@
   // ---------------------------------------------------------------
   var TRAMOS = [[3, 8000], [5, 9500], [7, 11500], [10, 14000]];  // [hasta cuantos km, precio]
   var MARGEN = 1800;           // lo que le queda a Ya te llega por pedido
-  var MAX_KM = 10;             // mas de esto se cotiza aparte
+  var KM_EXTRA = 1200;         // cada km que pasa del ultimo tramo
+  var MAX_KM = 40;             // tope de seguridad: mas de esto si se cotiza aparte
   var FACTOR_RUTA = 1.3;       // las motos no van en linea recta
 
   function cargarTarifas() {
@@ -222,6 +223,7 @@
       if (Array.isArray(t.tramos) && t.tramos.length) TRAMOS = t.tramos;
       if (t.margen_cop !== null && t.margen_cop !== undefined) MARGEN = t.margen_cop;
       if (t.max_km) MAX_KM = t.max_km;
+      if (t.km_extra_cop) KM_EXTRA = t.km_extra_cop;
       FACTOR_RUTA = Number(t.factor_ruta);
       calcular();
     });
@@ -441,7 +443,9 @@
 
   function precioDe(k) {
     for (var i = 0; i < TRAMOS.length; i++) { if (k <= TRAMOS[i][0]) return TRAMOS[i][1]; }
-    return null;   // pasa de todos los tramos: se cotiza aparte
+    // Pasa del ultimo tramo: se cobra el ultimo tramo mas cada km adicional
+    var ult = TRAMOS[TRAMOS.length - 1];
+    return ult[1] + Math.ceil(k - ult[0]) * KM_EXTRA;
   }
 
   function calcular() {
@@ -458,7 +462,7 @@
     }
     var p = (k > MAX_KM) ? null : precioDe(k);
     if (p === null) {
-      // Mas de 10 km: el plan dice que se cotiza aparte, asi que no se pide desde aqui
+      // Pasa del tope de seguridad: ahi si se cotiza aparte
       $('km').innerHTML = 'Son unos <b>' + (Math.round(k * 10) / 10).toString().replace('.', ',') + ' km</b>. ' +
         '<b>Pasa de ' + MAX_KM + ' km</b>, y esos recorridos los cotizamos aparte. Escríbenos para darte el precio.';
       $('precio-b').textContent = 'Cotizar';

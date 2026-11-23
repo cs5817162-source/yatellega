@@ -63,7 +63,7 @@
   .doc { background:#fff; border-radius:12px; padding:10px 12px; margin-top:10px; }
   .doc b { font-size:15px; display:block; }
   .doc .ayuda { font-size:13px; color:var(--m); margin:2px 0 8px; }
-  .foto { display:flex; align-items:center; gap:10px; margin-top:8px; }
+  .foto { display:flex; align-items:center; flex-wrap:wrap; gap:8px 10px; margin-top:8px; }
   .foto .bt { border:1.5px solid var(--n); color:var(--n); background:#fff; border-radius:10px; padding:9px 12px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; margin:0; }
   .foto .nom { font-size:13px; color:#166534; word-break:break-all; }
   .foto input[type=file] { display:none; }
@@ -171,17 +171,17 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
       <h2>2. Documentos</h2>
       <div class="doc">
         <b>Licencia de conducción</b>
-        <div class="ayuda">Categoría A2 para moto. Las dos fotos son obligatorias: lado A y lado B.</div>
+        <div class="ayuda">Categoría A2 para moto. Los dos lados son obligatorios: lado A y lado B. Puedes tomar la foto o adjuntar el archivo (PDF, Word o foto).</div>
         <label for="licv" style="margin-top:0">Fecha de vencimiento</label>
         <input type="date" id="licv">
-        <div class="foto"><label class="bt">Tomar foto: lado A (frente)<input type="file" accept="image/*" capture="environment" data-n="licencia"></label><span class="nom"></span></div>
-        <div class="foto"><label class="bt">Tomar foto: lado B (atrás)<input type="file" accept="image/*" capture="environment" data-n="licenciaB"></label><span class="nom"></span></div>
+        <div class="foto"><label class="bt">Tomar foto: lado A (frente)<input type="file" accept="image/*" capture="environment" data-n="licencia"></label><label class="bt">O adjuntar archivo (PDF, Word o foto)<input type="file" accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-n="licencia"></label><span class="nom"></span></div>
+        <div class="foto"><label class="bt">Tomar foto: lado B (atrás)<input type="file" accept="image/*" capture="environment" data-n="licenciaB"></label><label class="bt">O adjuntar archivo (PDF, Word o foto)<input type="file" accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-n="licenciaB"></label><span class="nom"></span></div>
       </div>
       <div class="doc">
         <b>Tarjeta de propiedad</b>
-        <div class="ayuda">Licencia de tránsito de la moto. Las dos fotos son obligatorias: lado A y lado B.</div>
-        <div class="foto"><label class="bt">Tomar foto: lado A (frente)<input type="file" accept="image/*" capture="environment" data-n="tarjeta"></label><span class="nom"></span></div>
-        <div class="foto"><label class="bt">Tomar foto: lado B (atrás)<input type="file" accept="image/*" capture="environment" data-n="tarjetaB"></label><span class="nom"></span></div>
+        <div class="ayuda">Licencia de tránsito de la moto. Los dos lados son obligatorios: lado A y lado B. Puedes tomar la foto o adjuntar el archivo (PDF, Word o foto).</div>
+        <div class="foto"><label class="bt">Tomar foto: lado A (frente)<input type="file" accept="image/*" capture="environment" data-n="tarjeta"></label><label class="bt">O adjuntar archivo (PDF, Word o foto)<input type="file" accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-n="tarjeta"></label><span class="nom"></span></div>
+        <div class="foto"><label class="bt">Tomar foto: lado B (atrás)<input type="file" accept="image/*" capture="environment" data-n="tarjetaB"></label><label class="bt">O adjuntar archivo (PDF, Word o foto)<input type="file" accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-n="tarjetaB"></label><span class="nom"></span></div>
       </div>
       <div class="doc">
         <b>SOAT vigente</b>
@@ -190,7 +190,7 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
         <input type="date" id="soatv">
         <div class="est" id="soat-est"></div>
         <div class="o">o</div>
-        <div class="foto"><label class="bt">Tomar foto del SOAT<input type="file" accept="image/*" capture="environment" data-n="soat"></label><span class="nom"></span></div>
+        <div class="foto"><label class="bt">Tomar foto del SOAT<input type="file" accept="image/*" capture="environment" data-n="soat"></label><label class="bt">O adjuntar archivo (PDF, Word o foto)<input type="file" accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-n="soat"></label><span class="nom"></span></div>
       </div>
       <div class="doc">
         <b>Revisión técnico-mecánica</b>
@@ -201,13 +201,13 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
           <input type="date" id="tecv">
           <div class="est" id="tec-est"></div>
           <div class="o">o</div>
-          <div class="foto"><label class="bt">Tomar foto de la revisión<input type="file" accept="image/*" capture="environment" data-n="tecno"></label><span class="nom"></span></div>
+          <div class="foto"><label class="bt">Tomar foto de la revisión<input type="file" accept="image/*" capture="environment" data-n="tecno"></label><label class="bt">O adjuntar archivo (PDF, Word o foto)<input type="file" accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-n="tecno"></label><span class="nom"></span></div>
         </div>
       </div>
       <div class="doc">
         <b>Pasado judicial</b>
         <div class="ayuda">El certificado de la Policía Nacional. Lo saca gratis en la página de la Policía y le toma una foto o una captura de pantalla.</div>
-        <div class="foto"><label class="bt">Subir el certificado<input type="file" accept="image/*" data-n="judicial"></label><span class="nom"></span></div>
+        <div class="foto"><label class="bt">Subir el certificado (PDF, Word o foto)<input type="file" accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-n="judicial"></label><span class="nom"></span></div>
       </div>
     </div>
 
@@ -484,6 +484,8 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
   document.querySelectorAll('input[type=file]').forEach(function (f) {
     f.addEventListener('change', function () {
       var nom = f.parentNode.parentNode.querySelector('.nom');
+      if (f.files && f.files[0] && f.files[0].size > 15 * 1024 * 1024) { f.value = ''; nom.textContent = 'Ese archivo pesa más de 15 MB. Escoge uno más liviano.'; nom.style.color = '#B91C1C'; delete archivos[f.dataset.n]; progreso(); estados(); return; }
+      nom.style.color = '';
       if (f.files && f.files[0]) { archivos[f.dataset.n] = f.files[0]; nom.textContent = '✓ ' + f.files[0].name; }
       else { delete archivos[f.dataset.n]; nom.textContent = ''; }
       progreso(); estados();
@@ -524,7 +526,8 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
   function subir(file, nombre) {
     var ext = ((file.name.split('.').pop()) || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
     var path = user.id + '/' + nombre + '-' + Date.now() + '.' + ext;
-    return sb.storage.from('documentos').upload(path, file, { contentType: file.type || 'image/jpeg' }).then(function (r) {
+    var TIPOS = { pdf: 'application/pdf', doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' };
+    return sb.storage.from('documentos').upload(path, file, { contentType: file.type || TIPOS[ext] || 'image/jpeg' }).then(function (r) {
       if (r.error) throw r.error;
       return path;
     });

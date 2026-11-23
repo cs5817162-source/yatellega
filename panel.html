@@ -513,8 +513,8 @@
     add('Foto del conductor', m.foto_selfie); add('Licencia', m.foto_licencia); add('Tarjeta de propiedad', m.foto_tarjeta_propiedad); add('SOAT', m.foto_soat); add('Tecnomecánica', m.foto_tecnomecanica);
     add('Moto con la placa', m.foto_moto_placa); add('Moto, otro costado', m.foto_moto_lado);
     add('Pasado judicial', m.foto_pasado_judicial);
-    if (!lista.length) { cont.textContent = 'No subió fotos.'; return; }
-    cont.textContent = 'Abriendo fotos…';
+    if (!lista.length) { cont.textContent = 'No subió documentos.'; return; }
+    cont.textContent = 'Abriendo documentos…';
     sb.storage.from('documentos').createSignedUrls(lista.map(function (x) { return x[1]; }), 3600).then(function (r) {
       if (r.error) { cont.textContent = errMsg(r.error); return; }
       cont.innerHTML = r.data.map(function (u, i) { return u.signedUrl ? '<a target="_blank" rel="noopener" href="' + u.signedUrl + '">' + esc(lista[i][0]) + '</a>' : ''; }).join('');
