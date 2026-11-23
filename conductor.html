@@ -20,6 +20,7 @@
   h2 { font-size:18px; margin:0 0 8px; font-weight:700; }
   .fila { display:flex; gap:10px; align-items:flex-start; margin:8px 0; font-size:16px; line-height:1.35; }
   .pt { width:12px; height:12px; border-radius:50%; margin-top:5px; flex:none; }
+  #foto-prev { display:none; width:100%; max-height:240px; object-fit:cover; border-radius:12px; margin-top:8px; border:2px solid var(--n); }
   .ayuda-f { font-size:13px; color:#6B7280; margin:2px 0 6px; line-height:1.4; }
   .refe { display:none; margin-top:6px; background:#FFF6E5; border-left:4px solid var(--n); border-radius:0 10px 10px 0; padding:8px 10px; font-size:15px; font-weight:600; color:#7A3E06; }
   .pago { display:flex; align-items:center; gap:10px; background:#FFF6E5; border-radius:12px; padding:12px; font-size:16px; font-weight:600; margin-top:10px; }
@@ -345,6 +346,7 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
       <div style="margin-top:12px;font-weight:600">Foto de lo que entregaste</div>
       <div class="ayuda-f">Que se vea el pedido ya entregado: en la puerta o en las manos del cliente. Es obligatoria.</div>
       <div class="foto"><label class="bt">Tomar la foto<input type="file" accept="image/*" capture="environment" id="foto-ent"></label><span class="nom" id="foto-nom"></span></div>
+      <img id="foto-prev" alt="Vista previa de la foto de entrega">
       <div style="margin-top:12px;font-weight:600">Código de entrega del cliente</div>
       <input type="text" id="codigo" inputmode="numeric" maxlength="4" placeholder="----" autocomplete="off">
       <div class="err" id="err" role="alert"></div>
@@ -749,15 +751,27 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     });
   }
 
+  var urlPrev = null;
+  function limpiarPrev() {
+    if (urlPrev) { URL.revokeObjectURL(urlPrev); urlPrev = null; }
+    $('foto-prev').style.display = 'none'; $('foto-prev').removeAttribute('src');
+  }
   $('foto-ent').addEventListener('change', function () {
     var f = this.files && this.files[0];
     fotoEnt = f || null;
-    $('foto-nom').textContent = f ? '✓ Foto lista' : '';
+    limpiarPrev();
+    if (f) {
+      // Se muestra la foto para que el conductor vea que si es la correcta
+      urlPrev = URL.createObjectURL(f);
+      $('foto-prev').src = urlPrev;
+      $('foto-prev').style.display = 'block';
+    }
+    $('foto-nom').textContent = f ? '✓ Así quedó. Si no se ve bien el pedido, tómala otra vez.' : '';
     $('err').textContent = '';
   });
 
   function prepararEntrega(n) {
-    fotoEnt = null; $('foto-ent').value = ''; $('foto-nom').textContent = ''; cerrando = false;
+    fotoEnt = null; $('foto-ent').value = ''; $('foto-nom').textContent = ''; cerrando = false; limpiarPrev();
     $('e-dir').textContent = dirTxt(ped.direccion_entrega, ped.barrio_entrega);
     pintarRef('e-ref', ped.referencia_entrega);
     enlaces('e', ped.direccion_entrega, ped.barrio_entrega, ped.lat_entrega, ped.lng_entrega);

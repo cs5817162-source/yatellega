@@ -9,6 +9,11 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="ytl.css">
 <style>
+  #visor { position:fixed; inset:0; z-index:99; background:rgba(0,0,0,.72); align-items:center; justify-content:center; padding:16px; }
+  #visor-box { position:relative; background:#fff; border-radius:16px; max-width:560px; width:100%; max-height:92vh; overflow:auto; padding:12px; }
+  #visor-box img { width:100%; border-radius:10px; display:block; }
+  #visor-x { position:absolute; top:6px; right:8px; border:0; background:rgba(0,0,0,.55); color:#fff; width:34px; height:34px; border-radius:50%; font-size:22px; line-height:1; cursor:pointer; z-index:2; }
+  .visor-i { font-size:14px; line-height:1.5; margin-top:10px; color:#1F2937; }
   :root { --n:#DD4B0B; --n2:#E8590C; --ink:#16181B; --m:#6B7176; --bg:#F3F4F4; --peach:#FBEBD3; --peacht:#7A2E0A; }
   * { box-sizing:border-box; }
   body { margin:0; font-family:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--ink); background:var(--bg); }
@@ -388,9 +393,9 @@
     });
     $('ren').innerHTML = filas.length ? '<table class="tabla"><tr><th>Conductor</th><th>Completados</th><th>Ingresos</th><th>Ganó el conductor</th></tr>' + filas.map(function (f) { return '<tr><td><b>' + esc(f[0]) + '</b></td><td>' + f[1] + '</td><td>' + fmt(f[2]) + '</td><td>' + fmt(f[3]) + '</td></tr>'; }).join('') + '</table>' : '<div class="vacio">Todavía no hay conductores activos.</div>';
     $('csv-ren').onclick = function () { csv('rendimiento-conductores.csv', [['Conductor', 'Completados', 'Ingresos', 'Gano el conductor']].concat(filas)); };
-    $('det').innerHTML = ps.length ? '<table class="tabla"><tr><th>Fecha</th><th>Cliente</th><th>Estado</th><th>Conductor</th><th>Precio</th></tr>' + ps.slice(0, 15).map(function (p) {
+    $('det').innerHTML = ps.length ? '<table class="tabla"><tr><th>Fecha</th><th>Cliente</th><th>Estado</th><th>Conductor</th><th>Precio</th><th>Entrega</th></tr>' + ps.slice(0, 15).map(function (p) {
       var e = ETQ[p.estado]; var d = new Date(p.creado_en);
-      return '<tr><td>' + d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) + ', ' + d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) + '</td><td>' + esc(nombreCli(p.cliente_id)) + '</td><td><span class="tag ' + e[1] + '" style="margin:0">' + e[0] + '</span></td><td>' + (p.motero_id ? esc(nombreMot(p.motero_id)) : 'Sin asignar') + '</td><td>' + fmt(p.precio_cop) + '</td></tr>';
+      return '<tr><td>' + d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) + ', ' + d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) + '</td><td>' + esc(nombreCli(p.cliente_id)) + '</td><td><span class="tag ' + e[1] + '" style="margin:0">' + e[0] + '</span></td><td>' + (p.motero_id ? esc(nombreMot(p.motero_id)) : 'Sin asignar') + '</td><td>' + fmt(p.precio_cop) + '</td><td>' + (p.foto_entrega ? '<button class="btn w sm" type="button" data-pfoto="' + p.id + '">Ver foto</button>' : (p.estado === 'entregado' ? '<small style="color:#B91C1C">Sin foto</small>' : '')) + '</td></tr>';
     }).join('') + '</table>' : '<div class="vacio">Sin mandados en este período.</div>';
   }
 
@@ -470,8 +475,29 @@
     if (d.sus) cambiar(d.sus, 'suspendido');
     if (d.res) sb.from('incidencias').update({ resuelta: true }).eq('id', d.res).then(function () { ultima = ''; cargar(); });
     if (d.docs) verDocs(d.docs);
+    if (d.pfoto) verFotoEntrega(d.pfoto);
     if (d.copy) copiar(BASE + d.copy, t);
   });
+  // ---------- Foto de entrega ----------
+  function verFotoEntrega(id) {
+    var p = D.ped.filter(function (x) { return String(x.id) === String(id); })[0];
+    if (!p || !p.foto_entrega) return;
+    var v = $('visor'), c = $('visor-c');
+    c.innerHTML = '<div class="vacio">Abriendo la foto…</div>';
+    v.style.display = 'flex';
+    sb.storage.from('documentos').createSignedUrl(p.foto_entrega, 3600).then(function (r) {
+      if (r.error || !r.data) { c.innerHTML = '<div class="vacio">No se pudo abrir la foto.</div>'; return; }
+      var f = new Date(p.actualizado_en || p.creado_en);
+      c.innerHTML = '<img src="' + r.data.signedUrl + '" alt="Foto de la entrega">' +
+        '<div class="visor-i"><b>' + esc(p.direccion_entrega) + (p.barrio_entrega ? ', ' + esc(p.barrio_entrega) : '') + '</b><br>' +
+        'Conductor: ' + (p.motero_id ? esc(nombreMot(p.motero_id)) : '—') + ' · Cliente: ' + esc(nombreCli(p.cliente_id)) + '<br>' +
+        f.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) + ', ' + f.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) + '</div>';
+    });
+  }
+  document.addEventListener('click', function (e) {
+    if (e.target && (e.target.id === 'visor' || e.target.id === 'visor-x')) $('visor').style.display = 'none';
+  });
+
   function copiar(txt, btn) {
     var o = btn.textContent;
     function ok() { btn.textContent = 'Enlace copiado'; setTimeout(function () { btn.textContent = o; }, 1800); }
@@ -509,5 +535,6 @@
   };
 })();
 </script>
+<div id="visor" style="display:none"><div id="visor-box"><button id="visor-x" type="button" aria-label="Cerrar">&times;</button><div id="visor-c"></div></div></div>
 </body>
 </html>
