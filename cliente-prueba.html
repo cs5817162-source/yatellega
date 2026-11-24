@@ -26,6 +26,16 @@
   .fila .est { font-size:13px; line-height:1.4; margin-top:4px; color:var(--m); }
   .fila .est:empty { display:none; }
   .fila .est.ok { color:#166534; } .fila .est.mal { color:#B91C1C; }
+  .fila .tit { font-size:12px; font-weight:700; letter-spacing:.3px; text-transform:uppercase; color:var(--m); margin-bottom:2px; }
+  .fila .acc { display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:6px; }
+  .fila .acc button { border:0; background:transparent; color:var(--n); font-weight:700; font-size:13px; padding:4px 0; cursor:pointer; font-family:inherit; }
+  .fila .link { display:none; margin-top:4px; border:1px solid #E5E7EB !important; border-radius:8px; padding:8px !important; font-size:14px; }
+  .fila .mapa-txt { font-size:12px; color:var(--m); margin-top:3px; }
+  .fila .mapa-txt:empty { display:none; }
+  #swap { display:block; margin:2px auto 6px; border:1px solid #E5E7EB; background:#fff; border-radius:999px; padding:5px 14px; font-size:13px; font-weight:600; color:var(--g); cursor:pointer; font-family:inherit; }
+  .lbl-pt { background:#fff; border:0; border-radius:6px; padding:1px 6px; font-weight:700; font-size:11px; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+  .ruta-info { font-size:13px; color:var(--m); margin-top:6px; }
+  .ruta-info:empty { display:none; }
   .gps-info b { color:var(--g); }
   .km { margin-top:12px; background:var(--c); border:1px solid var(--n); border-radius:12px; padding:10px 12px; font-size:14px; line-height:1.5; }
   /* Seguir la moto mientras viene */
@@ -148,28 +158,36 @@
           <div class="fila f" id="f1">
             <span class="pt" style="background:var(--n)"></span>
             <div style="flex:1">
-              <input type="text" class="dir" placeholder="¿Dónde lo recogemos? Ej. Cra 5 # 10-20" autocomplete="off"><div class="sug"></div>
+              <div class="tit">Recogida</div>
+              <input type="text" class="dir" placeholder="¿Dónde lo recogemos? Ej. Cra 41D 2 # 55B-63" autocomplete="off"><div class="sug"></div>
               <input type="text" class="bar" placeholder="Barrio, ej. Granada" autocomplete="off">
               <input type="text" class="comp" placeholder="Apto, torre, casa o conjunto (opcional)" autocomplete="off">
               <input type="text" class="ref" placeholder="Indicaciones: color del portón, qué hay al lado" autocomplete="off">
+              <div class="acc"><button class="miub" data-i="1" type="button">Usar mi ubicación actual</button><button class="pegar" type="button">Pegar ubicación compartida</button></div>
+              <input type="text" class="link" placeholder="Pega aquí el enlace de WhatsApp o Google Maps" autocomplete="off">
               <div class="est"></div>
+              <div class="mapa-txt"></div>
             </div>
-            <button class="miub" data-i="1" type="button">Mi ubicación actual</button>
           </div>
+          <button type="button" id="swap">⇅ Intercambiar recogida y entrega</button>
           <div class="fila" id="f2">
             <span class="pt" style="background:var(--g)"></span>
             <div style="flex:1">
+              <div class="tit">Entrega</div>
               <input type="text" class="dir" placeholder="¿Dónde lo entregamos? Ej. Calle 5 # 38-10" autocomplete="off"><div class="sug"></div>
               <input type="text" class="bar" placeholder="Barrio, ej. San Fernando" autocomplete="off">
               <input type="text" class="comp" placeholder="Apto, torre, casa o conjunto (opcional)" autocomplete="off">
               <input type="text" class="ref" placeholder="Indicaciones: color del portón, qué hay al lado" autocomplete="off">
+              <div class="acc"><button class="miub" data-i="2" type="button">Usar mi ubicación actual</button><button class="pegar" type="button">Pegar ubicación compartida</button></div>
+              <input type="text" class="link" placeholder="Pega aquí el enlace de WhatsApp o Google Maps" autocomplete="off">
               <div class="est"></div>
+              <div class="mapa-txt"></div>
             </div>
-            <button class="miub" data-i="2" type="button">Mi ubicación actual</button>
           </div>
         </div>
 
         <div class="gps-info" id="gps-info"></div>
+        <div class="ruta-info" id="ruta-info"></div>
 
         <div class="pago">
           <p>¿Cómo vas a pagar?</p>
@@ -305,54 +323,29 @@
 
   function campo(i, clase) { return $('f' + i).querySelector('.' + clase); }
 
-  // La calle que cruza. En Cali uno se ubica por el cruce ("la 41D2 con
-  // la 55B"), no por el numero de la casa, que casi nunca esta en los
-  // mapas. Esto pregunta que calles hay a 90 metros a la redonda.
-  function calleCruzada(ll, principal) {
-    var q = '[out:json][timeout:20];way(around:90,' + ll.lat + ',' + ll.lng + ')[highway][name];out tags;';
-    return fetch('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q))
-      .then(function (r) { return r.json(); })
-      .then(function (j) {
-        var nombres = [];
-        (j.elements || []).forEach(function (e) {
-          var n = e.tags && e.tags.name;
-          if (n && n !== principal && nombres.indexOf(n) < 0) nombres.push(n);
-        });
-        // Si la principal es carrera, buscamos una calle, y al reves
-        var esCarrera = /carrera|cra|kr/i.test(principal || '');
-        var cruce = nombres.filter(function (n) {
-          return esCarrera ? /^calle|^cl\b|^diagonal/i.test(n) : /^carrera|^cra|^kr|^transversal/i.test(n);
-        })[0];
-        return cruce || nombres[0] || null;
-      })
-      .catch(function () { return null; });
-  }
-
-  // De unas coordenadas a una direccion escrita
+  // De unas coordenadas a un nombre de lugar. NUNCA escribe en la direccion
+  // del cliente: el mapa gratuito casi nunca tiene el numero de la casa, y
+  // pisar "Cra 41D 2 # 55B-63" con "Carrera 41D2" hace perder la direccion.
+  // Lo que reconoce el mapa se muestra aparte, como referencia.
   function buscarDireccion(i, ll) {
+    var g = gen[i];
     var u = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18' +
             '&accept-language=es&lat=' + ll.lat + '&lon=' + ll.lng;
     fetch(u).then(function (r) { return r.json(); }).then(function (d) {
+      if (g !== gen[i]) return;                       // el punto cambio mientras tanto
       var a = (d && d.address) || {};
       var via = [a.road, a.house_number].filter(Boolean).join(' # ');
       var barrio = a.neighbourhood || a.suburb || a.quarter || a.city_district || '';
-      var dir = campo(i, 'dir'), bar = campo(i, 'bar');
-      if (via && !dir.dataset.escrito) dir.value = via;
-      else if (!dir.value.trim()) dir.value = via || 'Punto marcado en el mapa';
-      if (barrio && !bar.value.trim()) bar.value = barrio;
+      meta[i].mapaTxt = [via, barrio].filter(Boolean).join(', ') || null;
+      mapaTxt(i);
+      var bar = campo(i, 'bar');
+      if (barrio && !bar.value.trim()) bar.value = barrio;   // solo si estaba vacio
+    }).catch(function () {});
+  }
 
-      // Si no vino el numero de la casa, al menos decimos con que cruza
-      if (a.road && !a.house_number && !dir.dataset.escrito) {
-        calleCruzada(ll, a.road).then(function (cruce) {
-          if (cruce && !dir.dataset.escrito && dir.value.indexOf(' con ') < 0) {
-            dir.value = a.road + ' con ' + cruce;
-          }
-        });
-      }
-    }).catch(function () {
-      var dir = campo(i, 'dir');
-      if (!dir.value.trim()) dir.value = 'Punto marcado en el mapa';
-    });
+  function mapaTxt(i) {
+    var el = $('f' + i).querySelector('.mapa-txt');
+    el.textContent = meta[i].mapaTxt ? 'El mapa lo ubica cerca de: ' + meta[i].mapaTxt : '';
   }
 
   // ================= Direcciones con Google (como DiDi o Rappi) =================
@@ -378,6 +371,9 @@
   var G = null;                              // librerias de Google, cuando cargan
   var gMap = null, gMarcas = { 1: null, 2: null };
   var GPS_MAX = 30;                          // metros: mas de esto no se acepta
+  // Datos de cada punto, independientes: lo que reconocio el mapa, de donde
+  // salio el punto, su precision y su calidad.
+  var meta = { 1: {}, 2: {} };
 
   function coordOk(ll) {
     if (!ll) return false;
@@ -397,15 +393,15 @@
   // Quita el punto: sin punto verificado no se puede pedir
   function anular(i) {
     gen[i]++;
-    conf[i] = false; origen[i] = null; pts[i] = null;
-    quitarMarca(i);
+    conf[i] = false; origen[i] = null; pts[i] = null; meta[i] = {};
+    quitarMarca(i); mapaTxt(i);
     var t = $('f' + i).querySelector('.pt');
     if (t) t.style.boxShadow = '';
     calcular(); ayuda();
   }
 
   // Pone un punto ya verificado
-  function aceptar(i, lat, lng, como, texto) {
+  function aceptar(i, lat, lng, como, texto, extra) {
     var ll = L.latLng(lat, lng);
     if (!coordOk(ll)) {
       anular(i);
@@ -413,6 +409,9 @@
       return false;
     }
     pts[i] = ll; conf[i] = true; origen[i] = como;
+    meta[i] = { fuente: como, precision: (extra && extra.precision) || null,
+                calidad: (extra && extra.calidad) || como, mapaTxt: (extra && extra.mapaTxt) || null };
+    mapaTxt(i);
     ponerMarca(i, ll);
     var t = $('f' + i).querySelector('.pt');
     if (t) t.style.boxShadow = '0 0 0 3px #BBF7D0';
@@ -464,6 +463,8 @@
       marcas[i] = L.marker(ll, {
         icon: L.divIcon({ className: '', html: '<div class="marca" style="background:' + COLOR_PT[i] + '"></div>', iconSize: [18, 18], iconAnchor: [9, 9] })
       }).addTo(map);
+      // Etiqueta, para no depender solo del color
+      marcas[i].bindTooltip(i === 1 ? 'Recogida' : 'Entrega', { permanent: true, direction: 'top', offset: [0, -10], className: 'lbl-pt' });
     }
   }
   function quitarMarca(i) {
@@ -554,15 +555,14 @@
       // Texto corto para el conductor y barrio, si no lo habia escrito
       var comp = {};
       (x.address_components || []).forEach(function (c) { c.types.forEach(function (t) { comp[t] = c.long_name; }); });
-      var dirInp = campo(i, 'dir'), barInp = campo(i, 'bar');
-      var corta = String(x.formatted_address || '').split(',')[0];
-      if (corta) dirInp.value = corta;
+      var barInp = campo(i, 'bar');
       var barrio = comp.neighborhood || comp.sublocality_level_1 || comp.sublocality || '';
       if (barrio && !barInp.value.trim()) barInp.value = barrio;
       var loc = x.geometry.location;
       aceptar(i, loc.lat(), loc.lng(), 'google',
-        '<b>Dirección verificada por Google.</b> ' + esc(x.formatted_address || '') +
-        (lt === 'RANGE_INTERPOLATED' ? '<br><span style="color:var(--m)">Ubicada sobre la cuadra según el número.</span>' : ''));
+        '<b>Dirección verificada por Google.</b>' +
+        (lt === 'RANGE_INTERPOLATED' ? '<br><span style="color:var(--m)">Ubicada sobre la cuadra según el número.</span>' : ''),
+        { calidad: lt === 'ROOFTOP' ? 'exacta' : 'aproximada', mapaTxt: x.formatted_address || null });
     }).catch(function (e) {
       if (g !== gen[i]) return;
       anular(i);
@@ -578,6 +578,7 @@
   var ultimaGratis = { 1: '', 2: '' }, turnoOsm = 0;
   function verificarGratis(i) {
     if (GOOGLE_KEY || conf[i]) return;
+    if (origen[i] === 'gps' || origen[i] === 'compartida') return;
     var dir = campo(i, 'dir').value.trim(), bar = campo(i, 'bar').value.trim();
     if (dir.length < 6 || /^ubicaci[oó]n compartida$/i.test(dir)) return;
     var firma = dir + '|' + bar;
@@ -601,11 +602,12 @@
             return hn && (!num[1] || hn.replace(/\s/g, '').toLowerCase() === (num[1] + '-' + num[2]).toLowerCase());
           })[0];
           if (exacta) {
-            aceptar(i, +exacta.lat, +exacta.lon, 'osm', '<b>Dirección encontrada en el mapa.</b>');
+            aceptar(i, +exacta.lat, +exacta.lon, 'osm', '<b>Dirección encontrada en el mapa.</b>',
+                    { calidad: 'exacta', mapaTxt: String(exacta.display_name || '').split(',').slice(0, 3).join(',') });
           } else {
-            estado(i, 'mal', 'No pudimos ubicar esa dirección exacta en el mapa gratuito. Para que el conductor llegue bien:' +
-              '<br>• Si estás ahí, toca <b>Mi ubicación actual</b>.' +
-              '<br>• Si no, pídele a quien esté en ese sitio que te mande su <b>ubicación por WhatsApp</b> y pega aquí el enlace.');
+            estado(i, '', 'Tu dirección queda guardada tal cual. Ahora falta el punto en el mapa:' +
+              '<br>• Si estás ahí, toca <b>Usar mi ubicación actual</b>.' +
+              '<br>• Si no, pídele a quien esté en ese sitio su <b>ubicación por WhatsApp</b> y toca <b>Pegar ubicación compartida</b>.');
           }
         })
         .catch(function () {
@@ -618,16 +620,23 @@
 
   // ---------- Texto a partir del GPS (solo para que el conductor lea) ----------
   function textoDeGps(i, ll) {
-    var dirInp = campo(i, 'dir');
-    if (dirInp.value.trim()) return;
+    // El GPS da el punto; el nombre del lugar se muestra aparte y la
+    // direccion escrita por el cliente no se toca.
     if (G) {
+      var g = gen[i];
       G.geocoder.geocode({ location: { lat: ll.lat, lng: ll.lng } }).then(function (r) {
         var x = r.results && r.results[0];
-        if (x && !dirInp.value.trim()) dirInp.value = String(x.formatted_address || '').split(',')[0];
+        if (x && g === gen[i]) { meta[i].mapaTxt = x.formatted_address || null; mapaTxt(i); }
       }).catch(function () {});
     } else {
-      buscarDireccion(i, ll);                           // OpenStreetMap, como antes
+      buscarDireccion(i, ll);
     }
+    if (!campo(i, 'dir').value.trim()) {
+      estado(i, 'ok', estadoTxt(i) + '<br><span style="color:#92400E">Escribe arriba la dirección completa (ej. Cra 41D 2 # 55B-63) para que el conductor la lea.</span>');
+    }
+  }
+  function estadoTxt(i) {
+    return '✓ <b>Ubicación tomada por GPS</b>' + (meta[i].precision ? ', con ' + meta[i].precision + ' m de precisión.' : '.');
   }
 
   // ---------------- Mapa y precio por distancia ----------------
@@ -670,6 +679,34 @@
       if (l.length === 2) map.fitBounds(L.latLngBounds(l), { padding: [40, 40], maxZoom: 16 });
       else if (l.length === 1) map.setView(l[0], 15);
     }
+    rutaCliente();
+  }
+
+  // Ruta por calles entre los dos puntos. Si el servicio de rutas no
+  // responde, NO se dibuja una linea recta: se dice que no se calculo.
+  var capaRutaC = null, genRuta = 0;
+  function rutaCliente() {
+    var g = ++genRuta;
+    if (capaRutaC && map) { map.removeLayer(capaRutaC); capaRutaC = null; }
+    var info = $('ruta-info');
+    if (!pts[1] || !pts[2] || !map) { info.textContent = ''; return; }
+    info.textContent = 'Calculando la ruta…';
+    var u = 'https://router.project-osrm.org/route/v1/driving/' +
+            pts[1].lng + ',' + pts[1].lat + ';' + pts[2].lng + ',' + pts[2].lat + '?overview=full&geometries=geojson';
+    var ctl = window.AbortController ? new AbortController() : null;
+    setTimeout(function () { if (ctl) ctl.abort(); }, 10000);
+    fetch(u, ctl ? { signal: ctl.signal } : undefined).then(function (r) { return r.json(); }).then(function (j) {
+      if (g !== genRuta) return;
+      var rt = j && j.routes && j.routes[0];
+      if (!rt || !rt.geometry) throw 'sin-ruta';
+      capaRutaC = L.polyline(rt.geometry.coordinates.map(function (c) { return [c[1], c[0]]; }),
+                             { color: '#E8590C', weight: 5, opacity: .85 }).addTo(map);
+      info.textContent = 'Ruta por calles: unos ' + (Math.round(rt.distance / 100) / 10).toString().replace('.', ',') +
+                         ' km, cerca de ' + Math.max(1, Math.round(rt.duration / 60)) + ' min en carro (la moto suele tardar menos).';
+    }).catch(function () {
+      if (g !== genRuta) return;
+      info.textContent = 'La ruta no se pudo calcular en este momento. Los dos puntos sí quedaron marcados.';
+    });
   }
 
   function enfocar(i) {
@@ -766,13 +803,13 @@
       // Solo se acepta un GPS preciso: si no, el conductor llegaria a otra cuadra
       if (m <= GPS_MAX) {
         var ll = L.latLng(mejor.coords.latitude, mejor.coords.longitude);
-        if (aceptar(i, ll.lat, ll.lng, 'gps', '<b>Ubicación tomada por GPS</b>, con ' + m + ' metros de precisión.')) {
+        if (aceptar(i, ll.lat, ll.lng, 'gps', '<b>Ubicación tomada por GPS</b>, con ' + m + ' metros de precisión.', { precision: m, calidad: 'gps' })) {
           textoDeGps(i, ll);
           $('gps-info').innerHTML = '';
         }
       } else {
         anular(i);
-        estado(i, 'mal', 'El GPS solo dio <b>' + m + ' metros</b> de precisión y así no podemos confirmar el punto.');
+        estado(i, 'mal', 'El GPS solo dio <b>' + m + ' metros</b> de precisión y así no podemos confirmar el punto. Toca otra vez <b>Usar mi ubicación actual</b> para reintentar.');
         $('gps-info').innerHTML = '<b>El GPS no está preciso todavía.</b>' + AYUDA_GPS;
       }
     }
@@ -813,32 +850,67 @@
     var n = id === 'f1' ? 1 : 2;
     $(id).querySelectorAll('input').forEach(function (inp) {
       inp.addEventListener('focus', function () { enfocar(n); });
+      if (inp.classList.contains('link')) return;
       if (inp.classList.contains('dir') || inp.classList.contains('bar')) {
         inp.addEventListener('blur', function () { setTimeout(function () { verificarGratis(n); }, 150); });
       }
       inp.addEventListener('input', function () {
-        // Si cambia la direccion o el barrio, el punto anterior ya no vale
         if (!inp.classList.contains('dir') && !inp.classList.contains('bar')) return;
         if (inp.classList.contains('dir')) inp.dataset.escrito = '1';
+        // Un punto que salio del GPS o de una ubicacion compartida no depende
+        // del texto: se conserva al escribir la direccion. Un punto que salio
+        // de BUSCAR el texto si se anula, porque ese texto ya cambio.
+        if (origen[n] === 'gps' || origen[n] === 'compartida') return;
+        if (pts[n]) estado(n, '', 'Cambiaste la dirección: vuelve a confirmar dónde queda.');
         anular(n);
-        estado(n, '', '');
-        if (inp.classList.contains('dir')) {
-          var c = compartida(inp.value);
-          if (c && c.corto) {
-            $(id).querySelector('.sug').innerHTML = '';
-            estado(n, 'mal', 'Ese enlace corto no se puede leer desde aquí. Ábrelo en Google Maps y copia el enlace completo, o usa <b>Mi ubicación actual</b>.');
-            return;
-          }
-          if (c) {
-            $(id).querySelector('.sug').innerHTML = '';
-            inp.value = 'Ubicación compartida';
-            aceptar(n, c.lat, c.lng, 'compartida', '<b>Ubicación compartida recibida.</b> Escribe abajo el apartamento o las indicaciones.');
-            return;
-          }
-        }
         pedirSugerencias(n);
       });
     });
+    // Ubicacion compartida, en su propio campo (no pisa la direccion)
+    var link = $(id).querySelector('.link');
+    $(id).querySelector('.pegar').addEventListener('click', function () {
+      link.style.display = link.style.display === 'block' ? 'none' : 'block';
+      if (link.style.display === 'block') link.focus();
+    });
+    link.addEventListener('input', function () {
+      var c = compartida(link.value);
+      if (!link.value.trim()) return;
+      if (c && c.corto) {
+        estado(n, 'mal', 'Ese enlace corto no se puede leer desde aquí. Ábrelo en Google Maps, toca Compartir y copia el enlace completo, o usa <b>Usar mi ubicación actual</b>.');
+        return;
+      }
+      if (!c) { estado(n, 'mal', 'Ese enlace no trae una ubicación. Copia el enlace de la ubicación de WhatsApp o Google Maps.'); return; }
+      gen[n]++;
+      if (aceptar(n, c.lat, c.lng, 'compartida', '<b>Ubicación compartida recibida.</b>', { calidad: 'compartida' })) {
+        link.value = ''; link.style.display = 'none';
+        textoDeGps(n, L.latLng(c.lat, c.lng));
+        if (!campo(n, 'dir').value.trim()) estado(n, 'ok', '✓ <b>Ubicación compartida recibida.</b><br><span style="color:#92400E">Escribe arriba la dirección o el nombre del sitio para que el conductor la lea.</span>');
+      }
+    });
+  });
+
+  // Intercambiar recogida y entrega: solo cuando el cliente lo pide
+  $('swap').addEventListener('click', function () {
+    ['dir', 'bar', 'comp', 'ref'].forEach(function (c) {
+      var a = campo(1, c), b = campo(2, c), t = a.value; a.value = b.value; b.value = t;
+    });
+    var e1 = $('f1').querySelector('.est').innerHTML, e2 = $('f2').querySelector('.est').innerHTML;
+    var c1 = $('f1').querySelector('.est').className, c2 = $('f2').querySelector('.est').className;
+    var t;
+    t = pts[1]; pts[1] = pts[2]; pts[2] = t;
+    t = conf[1]; conf[1] = conf[2]; conf[2] = t;
+    t = origen[1]; origen[1] = origen[2]; origen[2] = t;
+    t = meta[1]; meta[1] = meta[2]; meta[2] = t;
+    gen[1]++; gen[2]++;
+    [1, 2].forEach(function (k) {
+      quitarMarca(k);
+      if (pts[k]) ponerMarca(k, pts[k]);
+      var pt = $('f' + k).querySelector('.pt'); if (pt) pt.style.boxShadow = conf[k] ? '0 0 0 3px #BBF7D0' : '';
+      mapaTxt(k);
+    });
+    $('f1').querySelector('.est').innerHTML = e2; $('f1').querySelector('.est').className = c2;
+    $('f2').querySelector('.est').innerHTML = e1; $('f2').querySelector('.est').className = c1;
+    encuadrar(); calcular(); ayuda();
   });
 
   var cas = document.querySelectorAll('.pago .cas');
@@ -911,6 +983,12 @@
       lat_entrega: pts[2].lat, lng_entrega: pts[2].lng,
       referencia_recogida: [val('f1', 'comp'), val('f1', 'ref')].filter(Boolean).join(' · ') || null,
       referencia_entrega: [val('f2', 'comp'), val('f2', 'ref')].filter(Boolean).join(' · ') || null,
+      complemento_recogida: val('f1', 'comp') || null, complemento_entrega: val('f2', 'comp') || null,
+      direccion_mapa_recogida: meta[1].mapaTxt || null, direccion_mapa_entrega: meta[2].mapaTxt || null,
+      fuente_recogida: meta[1].fuente || null, fuente_entrega: meta[2].fuente || null,
+      precision_recogida: meta[1].precision || null, precision_entrega: meta[2].precision || null,
+      calidad_recogida: meta[1].calidad || null, calidad_entrega: meta[2].calidad || null,
+      confirmada_recogida: true, confirmada_entrega: true,
       forma_pago: pago, precio_cop: precio,
       ganancia_motero_cop: precio - MARGEN
     }).select().single().then(function (r) {
