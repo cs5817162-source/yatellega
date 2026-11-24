@@ -36,6 +36,9 @@
   .lbl-pt { background:#fff; border:0; border-radius:6px; padding:1px 6px; font-weight:700; font-size:11px; box-shadow:0 1px 3px rgba(0,0,0,.3); }
   .ruta-info { font-size:13px; color:var(--m); margin-top:6px; }
   .ruta-info:empty { display:none; }
+  .sug .res-t { font-size:13px; color:var(--m); margin-top:6px; }
+  .sug .op { border:1px solid #E5E7EB; border-radius:10px; padding:8px 10px; margin-top:6px; }
+  .sug .op small.p-ok { color:#166534; } .sug .op small.p-ap { color:#92400E; }
   .gps-info b { color:var(--g); }
   .km { margin-top:12px; background:var(--c); border:1px solid var(--n); border-radius:12px; padding:10px 12px; font-size:14px; line-height:1.5; }
   /* Seguir la moto mientras viene */
@@ -163,7 +166,7 @@
               <input type="text" class="bar" placeholder="Barrio, ej. Granada" autocomplete="off">
               <input type="text" class="comp" placeholder="Apto, torre, casa o conjunto (opcional)" autocomplete="off">
               <input type="text" class="ref" placeholder="Indicaciones: color del portón, qué hay al lado" autocomplete="off">
-              <div class="acc"><button class="miub" data-i="1" type="button">Usar mi ubicación actual</button><button class="pegar" type="button">Pegar ubicación compartida</button></div>
+              <div class="acc"><button class="miub" data-i="1" type="button">Usar mi ubicación actual</button><button class="buscar" type="button">Buscar en el mapa</button><button class="pegar" type="button">Pegar ubicación compartida</button></div>
               <input type="text" class="link" placeholder="Pega aquí el enlace de WhatsApp o Google Maps" autocomplete="off">
               <div class="est"></div>
               <div class="mapa-txt"></div>
@@ -178,7 +181,7 @@
               <input type="text" class="bar" placeholder="Barrio, ej. San Fernando" autocomplete="off">
               <input type="text" class="comp" placeholder="Apto, torre, casa o conjunto (opcional)" autocomplete="off">
               <input type="text" class="ref" placeholder="Indicaciones: color del portón, qué hay al lado" autocomplete="off">
-              <div class="acc"><button class="miub" data-i="2" type="button">Usar mi ubicación actual</button><button class="pegar" type="button">Pegar ubicación compartida</button></div>
+              <div class="acc"><button class="miub" data-i="2" type="button">Usar mi ubicación actual</button><button class="buscar" type="button">Buscar en el mapa</button><button class="pegar" type="button">Pegar ubicación compartida</button></div>
               <input type="text" class="link" placeholder="Pega aquí el enlace de WhatsApp o Google Maps" autocomplete="off">
               <div class="est"></div>
               <div class="mapa-txt"></div>
@@ -317,71 +320,39 @@
     });
   });
 
-  // ------------- Direcciones: del mapa al texto y al reves -------------
-  // Usamos el buscador de OpenStreetMap, que es gratis y no necesita clave.
-  var CALI_CAJA = '-76.62,3.53,-76.44,3.33';   // la zona donde buscamos
+  // ================= Direcciones y ubicacion: recogida y entrega =================
+  // Cada punto (1 = recogida, 2 = entrega) es independiente: su propio texto,
+  // coordenadas, fuente, precision y confirmacion. Lo que hace uno nunca toca
+  // el otro, salvo el boton Intercambiar.
+  //
+  // El punto se puede fijar de 5 maneras:
+  //   - escribiendo o pegando la direccion y escogiendo una opcion
+  //   - "Usar mi ubicacion actual" (GPS real del celular)
+  //   - "Pegar ubicacion compartida" (enlace de WhatsApp o Google Maps)
+  //   - tocando el mapa
+  //   - arrastrando el marcador para afinarlo
+  // La direccion que escribe el cliente nunca se reemplaza por lo que diga
+  // el mapa: eso se muestra aparte.
+  //
+  // Buscador: OpenStreetMap (Nominatim), gratis. Su politica no permite
+  // autocompletar letra por letra, asi que se busca al terminar de escribir,
+  // al pegar o al tocar "Buscar en el mapa", maximo 1 consulta por segundo.
 
+  var CALI_CAJA = '-76.62,3.56,-76.44,3.28';   // zona de servicio: Cali
   function campo(i, clase) { return $('f' + i).querySelector('.' + clase); }
 
-  // De unas coordenadas a un nombre de lugar. NUNCA escribe en la direccion
-  // del cliente: el mapa gratuito casi nunca tiene el numero de la casa, y
-  // pisar "Cra 41D 2 # 55B-63" con "Carrera 41D2" hace perder la direccion.
-  // Lo que reconoce el mapa se muestra aparte, como referencia.
-  function buscarDireccion(i, ll) {
-    var g = gen[i];
-    var u = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18' +
-            '&accept-language=es&lat=' + ll.lat + '&lon=' + ll.lng;
-    fetch(u).then(function (r) { return r.json(); }).then(function (d) {
-      if (g !== gen[i]) return;                       // el punto cambio mientras tanto
-      var a = (d && d.address) || {};
-      var via = [a.road, a.house_number].filter(Boolean).join(' # ');
-      var barrio = a.neighbourhood || a.suburb || a.quarter || a.city_district || '';
-      meta[i].mapaTxt = [via, barrio].filter(Boolean).join(', ') || null;
-      mapaTxt(i);
-      var bar = campo(i, 'bar');
-      if (barrio && !bar.value.trim()) bar.value = barrio;   // solo si estaba vacio
-    }).catch(function () {});
-  }
-
-  function mapaTxt(i) {
-    var el = $('f' + i).querySelector('.mapa-txt');
-    el.textContent = meta[i].mapaTxt ? 'El mapa lo ubica cerca de: ' + meta[i].mapaTxt : '';
-  }
-
-  // ================= Direcciones con Google (como DiDi o Rappi) =================
-  // 1. El cliente escribe y salen sugerencias de Google (solo Cali).
-  // 2. Escoge una y Google devuelve las coordenadas y QUE TAN PRECISAS son.
-  // 3. Solo se acepta si es la casa/edificio o un punto interpolado sobre la
-  //    cuadra. Si Google solo conoce la calle o el barrio, NO se usa.
-  // 4. Si Google no la encuentra: "Mi ubicación actual" (GPS con buena
-  //    precision) o pegar una ubicacion compartida (enlace de Google Maps).
-  // Nunca se inventan coordenadas ni se usa el centro del barrio.
-  //
-  // Sin llave (o si Google falla), la app sigue funcionando con GPS y
-  // ubicacion compartida, sobre el mapa de OpenStreetMap de siempre.
-  //
-  // Terminos de Google: lo que sale de Google se muestra solo en mapa de
-  // Google, y las coordenadas se guardan maximo 30 dias (la base las borra).
-  var GOOGLE_KEY = '';                       // llave restringida a este sitio
-  var CALI_LIM = { south: 3.28, west: -76.62, north: 3.56, east: -76.44 };
-  var conf = { 1: false, 2: false };         // ubicacion verificada
-  var origen = { 1: null, 2: null };         // 'google' | 'gps' | 'compartida'
-  var gen = { 1: 0, 2: 0 };                  // descarta respuestas viejas
-  var sesion = { 1: null, 2: null };         // sesion de autocompletar de Google
-  var G = null;                              // librerias de Google, cuando cargan
-  var gMap = null, gMarcas = { 1: null, 2: null };
-  var GPS_MAX = 30;                          // metros: mas de esto no se acepta
-  // Datos de cada punto, independientes: lo que reconocio el mapa, de donde
-  // salio el punto, su precision y su calidad.
-  var meta = { 1: {}, 2: {} };
+  var conf = { 1: false, 2: false };        // el cliente fijo ese punto
+  var origen = { 1: null, 2: null };        // texto | gps | compartida | mapa
+  var gen = { 1: 0, 2: 0 };                 // descarta respuestas viejas
+  var meta = { 1: {}, 2: {} };              // mapaTxt, fuente, precision, calidad
+  var buscado = { 1: '', 2: '' };           // ultimo texto que se busco
+  var GPS_MAX = 50;                         // metros: mas que esto no se acepta
 
   function coordOk(ll) {
     if (!ll) return false;
     var la = Number(ll.lat), lo = Number(ll.lng);
     if (!isFinite(la) || !isFinite(lo)) return false;
-    if (la < -90 || la > 90 || lo < -180 || lo > 180) return false;
-    // Zona de servicio amplia: Cali con Jamundi y Yumbo
-    return la > 3.15 && la < 3.65 && lo > -76.8 && lo < -76.3;
+    return la > 3.28 && la < 3.56 && lo > -76.62 && lo < -76.44;
   }
 
   function estado(i, clase, html) {
@@ -389,90 +360,90 @@
     e.className = 'est' + (clase ? ' ' + clase : '');
     e.innerHTML = html || '';
   }
+  function mapaTxt(i) {
+    var el = $('f' + i).querySelector('.mapa-txt');
+    el.textContent = meta[i].mapaTxt ? 'El mapa lo ubica cerca de: ' + meta[i].mapaTxt : '';
+  }
+  function opciones(i, html) { $('f' + i).querySelector('.sug').innerHTML = html || ''; }
 
-  // Quita el punto: sin punto verificado no se puede pedir
+  // Quita el punto de ESE campo (el otro no se toca)
   function anular(i) {
     gen[i]++;
     conf[i] = false; origen[i] = null; pts[i] = null; meta[i] = {};
-    quitarMarca(i); mapaTxt(i);
+    quitarMarca(i); mapaTxt(i); opciones(i, '');
     var t = $('f' + i).querySelector('.pt');
     if (t) t.style.boxShadow = '';
-    calcular(); ayuda();
+    encuadrar(); calcular(); ayuda();
   }
 
-  // Pone un punto ya verificado
+  // Fija el punto de ESE campo
   function aceptar(i, lat, lng, como, texto, extra) {
     var ll = L.latLng(lat, lng);
     if (!coordOk(ll)) {
-      anular(i);
-      estado(i, 'mal', 'Ese punto queda fuera de la zona donde trabajamos (Cali, Jamundí y Yumbo).');
+      estado(i, 'mal', 'Ese punto queda <b>fuera de Cali</b>, la zona donde trabajamos. Revisa la dirección o márcalo en el mapa.');
       return false;
     }
+    gen[i]++;
     pts[i] = ll; conf[i] = true; origen[i] = como;
     meta[i] = { fuente: como, precision: (extra && extra.precision) || null,
                 calidad: (extra && extra.calidad) || como, mapaTxt: (extra && extra.mapaTxt) || null };
-    mapaTxt(i);
+    mapaTxt(i); opciones(i, '');
     ponerMarca(i, ll);
     var t = $('f' + i).querySelector('.pt');
     if (t) t.style.boxShadow = '0 0 0 3px #BBF7D0';
     estado(i, 'ok', '✓ ' + texto);
     encuadrar(); calcular(); ayuda();
-    var otro = i === 1 ? 2 : 1;
-    if (!conf[otro]) enfocar(otro);
     $('err').textContent = '';
     return true;
   }
 
-  // ---------- Cargar Google ----------
-  function cargarGoogle() {
-    if (!GOOGLE_KEY) return Promise.reject('sin-llave');
-    if (window.__gPromesa) return window.__gPromesa;
-    window.__gPromesa = new Promise(function (ok, mal) {
-      window.__gListo = function () { ok(); };
-      var s = document.createElement('script');
-      s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(GOOGLE_KEY) +
-              '&v=weekly&language=es&region=CO&loading=async&callback=__gListo';
-      s.async = true;
-      s.onerror = function () { mal('carga'); };
-      document.head.appendChild(s);
-      setTimeout(function () { mal('tiempo'); }, 15000);
-    }).then(function () {
-      return Promise.all([
-        google.maps.importLibrary('maps'),
-        google.maps.importLibrary('places'),
-        google.maps.importLibrary('geocoding')
-      ]);
-    }).then(function (libs) {
-      G = { maps: libs[0], places: libs[1], geocoder: new libs[2].Geocoder() };
-      return G;
-    });
-    // Si Google falla (llave mala, tope del dia), seguimos con GPS
-    window.gm_authFailure = function () { G = null; window.__gPromesa = Promise.reject('llave'); window.__gPromesa.catch(function () {}); };
-    return window.__gPromesa;
-  }
-
-  // ---------- Mapa: de Google si hay llave; si no, el de siempre ----------
+  // ---------- Marcadores (se pueden arrastrar para afinar) ----------
   function ponerMarca(i, ll) {
     quitarMarca(i);
-    if (gMap) {
-      gMarcas[i] = new google.maps.Marker({
-        map: gMap, position: { lat: ll.lat, lng: ll.lng }, clickable: false,
-        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: COLOR_PT[i], fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3 }
-      });
-    } else if (map) {
-      marcas[i] = L.marker(ll, {
-        icon: L.divIcon({ className: '', html: '<div class="marca" style="background:' + COLOR_PT[i] + '"></div>', iconSize: [18, 18], iconAnchor: [9, 9] })
-      }).addTo(map);
-      // Etiqueta, para no depender solo del color
-      marcas[i].bindTooltip(i === 1 ? 'Recogida' : 'Entrega', { permanent: true, direction: 'top', offset: [0, -10], className: 'lbl-pt' });
-    }
+    if (!map) return;
+    marcas[i] = L.marker(ll, {
+      draggable: true,
+      icon: L.divIcon({ className: '', html: '<div class="marca" style="background:' + COLOR_PT[i] + '"></div>', iconSize: [18, 18], iconAnchor: [9, 9] })
+    }).addTo(map);
+    marcas[i].bindTooltip(i === 1 ? 'Recogida' : 'Entrega', { permanent: true, direction: 'top', offset: [0, -10], className: 'lbl-pt' });
+    marcas[i].on('dragend', function (e) {
+      var p = e.target.getLatLng();
+      if (aceptar(i, p.lat, p.lng, 'mapa', '<b>Punto ajustado en el mapa.</b>', { calidad: 'ajustada' })) nombreDe(i, p);
+      else ponerMarca(i, pts[i]);
+    });
   }
   function quitarMarca(i) {
-    if (gMarcas[i]) { gMarcas[i].setMap(null); gMarcas[i] = null; }
-    if (marcas[i] && map) { map.removeLayer(marcas[i]); marcas[i] = null; }
+    if (marcas[i] && map) { map.removeLayer(marcas[i]); }
+    marcas[i] = null;
   }
 
-  // ---------- Ubicacion compartida: enlace o coordenadas pegadas ----------
+  // ---------- De coordenadas a un nombre legible (geocodificacion inversa) ----------
+  // Llena la direccion SOLO si el cliente no habia escrito nada.
+  function nombreDe(i, ll) {
+    var g = gen[i];
+    turno().then(function () {
+      return fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=es&lat=' +
+                   ll.lat + '&lon=' + ll.lng);
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (g !== gen[i]) return;
+      var a = (d && d.address) || {};
+      var via = [a.road, a.house_number].filter(Boolean).join(' # ');
+      var barrio = a.neighbourhood || a.suburb || a.quarter || a.city_district || '';
+      meta[i].mapaTxt = [via, barrio].filter(Boolean).join(', ') || null;
+      mapaTxt(i);
+      var dir = campo(i, 'dir'), bar = campo(i, 'bar');
+      // Si la direccion la puso el mapa (no el cliente), el barrio tambien se actualiza
+      var auto = !dir.value.trim() || dir.dataset.auto === '1';
+      if (barrio && (auto || !bar.value.trim())) bar.value = barrio;
+      if (auto && via) { dir.value = via; dir.dataset.auto = '1'; buscado[i] = dir.value.trim() + '|' + bar.value.trim(); }
+      if (dir.dataset.auto === '1') {
+        estado(i, 'ok', $('f' + i).querySelector('.est').innerHTML.split('<br>')[0] +
+          '<br><span style="color:#92400E">Completa la dirección con el número de la casa (ej. Cra 41D 2 # 55B-63) para que el conductor la lea.</span>');
+      }
+    }).catch(function () {});
+  }
+
+  // ---------- Ubicacion compartida: enlace o coordenadas ----------
   function compartida(txt) {
     var t = String(txt || '');
     if (/maps\.app\.goo\.gl|goo\.gl\/maps/i.test(t)) return { corto: true };
@@ -481,209 +452,252 @@
             t.match(/^\s*(-?\d{1,2}\.\d{4,})\s*,\s*(-?\d{1,3}\.\d{4,})\s*$/);
     return m ? { lat: parseFloat(m[1]), lng: parseFloat(m[2]) } : null;
   }
-
-  // ---------- Sugerencias mientras escribe ----------
-  var esperaSug = { 1: null, 2: null };
-  function pedirSugerencias(i) {
-    var dir = campo(i, 'dir').value.trim(), caja = $('f' + i).querySelector('.sug');
-    clearTimeout(esperaSug[i]);
-    caja.innerHTML = '';
-    if (dir.length < 4) return;
-    if (!GOOGLE_KEY) return;            // sin Google: se verifica al terminar de escribir (verificarGratis)
-    var g = gen[i];
-    // Esperamos a que deje de escribir: cada consulta cuenta en el cupo gratis
-    esperaSug[i] = setTimeout(function () {
-      cargarGoogle().then(function () {
-        if (g !== gen[i]) return;
-        if (!sesion[i]) sesion[i] = new G.places.AutocompleteSessionToken();
-        var bar = campo(i, 'bar').value.trim();
-        return G.places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
-          input: dir + (bar ? ', ' + bar : '') + ', Cali',
-          sessionToken: sesion[i],
-          includedRegionCodes: ['co'],
-          locationRestriction: CALI_LIM,
-          language: 'es', region: 'co'
-        }).then(function (r) {
-          if (g !== gen[i]) return;                     // ya escribio otra cosa
-          var sug = (r.suggestions || []).map(function (s) { return s.placePrediction; }).filter(Boolean).slice(0, 5);
-          if (!sug.length) {
-            caja.innerHTML = '';
-            estado(i, 'mal', 'Google no encuentra esa dirección. Revisa cómo está escrita (ej. <b>Cra 70 # 9-81</b>), o usa <b>Mi ubicación actual</b> si estás en el sitio.');
-            return;
-          }
-          estado(i, '', '');
-          caja.innerHTML = sug.map(function (p, k) {
-            var a = p.mainText ? p.mainText.toString() : p.text.toString();
-            var b = p.secondaryText ? p.secondaryText.toString() : '';
-            return '<button type="button" class="op" data-k="' + k + '"><b>' + esc(a) + '</b><small>' + esc(b) + '</small></button>';
-          }).join('') + '<div class="por-google">Sugerencias de Google</div>';
-          caja.querySelectorAll('.op').forEach(function (b) {
-            b.addEventListener('click', function () { escoger(i, sug[+b.dataset.k], g); });
-          });
-        });
-      }).catch(function (e) {
-        if (g !== gen[i]) return;
-        estado(i, 'mal', e === 'sin-llave'
-          ? 'El buscador de direcciones aún no está activo. Usa <b>Mi ubicación actual</b> o pega una ubicación compartida de Google Maps.'
-          : 'El buscador de Google no respondió. Usa <b>Mi ubicación actual</b> o pega una ubicación compartida.');
-      });
-    }, 450);
+  function usarCompartida(i, c) {
+    if (c.corto) {
+      estado(i, 'mal', 'Ese enlace corto no se puede leer desde aquí. Ábrelo en Google Maps, toca <b>Compartir</b> y copia el enlace completo, o usa <b>Usar mi ubicación actual</b>.');
+      return;
+    }
+    if (aceptar(i, c.lat, c.lng, 'compartida', '<b>Ubicación compartida recibida.</b>', { calidad: 'compartida' })) nombreDe(i, L.latLng(c.lat, c.lng));
   }
 
-  // Lo que Google sabe de esa direccion: solo aceptamos la casa o el edificio
-  var TIPOS_CASA = ['street_address', 'premise', 'subpremise', 'establishment', 'point_of_interest'];
-  var TIPOS_ZONA = ['route', 'neighborhood', 'sublocality', 'sublocality_level_1', 'locality', 'political', 'administrative_area_level_1', 'administrative_area_level_2', 'postal_code'];
+  // ---------- Nomenclatura de Cali ----------
+  function sinTildes(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  // "cra 41d 2 no 55 b 63" -> "Carrera 41D2 # 55B-63" (solo para buscar; el texto del cliente no se toca)
+  function normalizarDir(s) {
+    var t = ' ' + sinTildes(s).toLowerCase().replace(/,?\s*(cali|valle del cauca|valle|colombia)\b.*$/, '').replace(/\s+/g, ' ').trim() + ' ';
+    t = t.replace(/ (carrera|carrea|carera|cra|cr|kra|kr|k)\.? ?(?=\d)/g, ' Carrera ')
+         .replace(/ (calle|cll|cl|clle)\.? ?(?=\d)/g, ' Calle ')
+         .replace(/ (avenida|avda|av)\.? ?(?=\d)/g, ' Avenida ')
+         .replace(/ (diagonal|diag|dg)\.? ?(?=\d)/g, ' Diagonal ')
+         .replace(/ (transversal|transv|trans|tv|tr)\.? ?(?=\d)/g, ' Transversal ')
+         .replace(/ (numero|num|no\.?|nro\.?|n°|nº|n\.)\s*(?=\d)/g, ' # ')
+         .replace(/\s*#\s*/g, ' # ')
+         .replace(/\s*-\s*/g, '-')
+         .replace(/(\d) ?([a-z])(?=\d|\s|-|#|$)/g, function (m, d, l) { return d + l.toUpperCase(); })
+         .replace(/# (\d+[A-Z]?\d?) (\d+)\b/, '# $1-$2');
+    return t.replace(/\s+/g, ' ').trim();
+  }
+  function partesDir(s) {
+    var t = normalizarDir(s);
+    var N = '(\\d+(?: ?[A-Z](?: ?\\d)?)?(?: ?bis)?)', SUF = '(?: (oeste|norte|sur|este))?';
+    var TIPOS = '(Carrera|Calle|Avenida|Diagonal|Transversal)';
+    function numero(x) { return x.replace(/\s+/g, '').replace(/^(\d+[A-Z])(\d)/, '$1 $2').replace(/bis$/i, ' Bis'); }
+    function sufijo(x) { return x ? ' ' + x.charAt(0).toUpperCase() + x.slice(1).toLowerCase() : ''; }
+    function cruceDe(tipo) { return /Carrera|Transversal/.test(tipo) ? 'Calle' : (/Calle|Diagonal/.test(tipo) ? 'Carrera' : null); }
+    var c = t.match(new RegExp('^' + TIPOS + ' ' + N + SUF + ' con ' + TIPOS + ' ' + N + SUF, 'i'));
+    if (c) return { texto: t, via: c[1] + ' ' + numero(c[2]) + sufijo(c[3]), cruce: c[4] + ' ' + numero(c[5]) + sufijo(c[6]), metros: null };
+    var m = t.match(new RegExp('^' + TIPOS + ' ' + N + SUF + ' # ?' + N + SUF + '(?:-(\\d+))?', 'i'));
+    if (!m) {
+      var v = t.match(new RegExp('^' + TIPOS + ' ' + N + SUF, 'i'));
+      return v ? { via: v[1] + ' ' + numero(v[2]) + sufijo(v[3]), texto: t } : { texto: t };
+    }
+    var via = m[1] + ' ' + numero(m[2]) + sufijo(m[3]), tc = cruceDe(m[1]);
+    return { texto: t, via: via, cruce: tc ? tc + ' ' + numero(m[4]) + sufijo(m[5]) : null,
+             metros: m[6] ? parseInt(m[6], 10) : null, completa: via + ' # ' + numero(m[4]) + (m[6] ? '-' + m[6] : '') };
+  }
+  function clave(n) { return sinTildes(n).toLowerCase().replace(/\s+/g, ''); }
 
-  function escoger(i, pred, g) {
-    var caja = $('f' + i).querySelector('.sug');
-    caja.innerHTML = '';
-    estado(i, '', 'Verificando la dirección con Google…');
-    sesion[i] = null;                                   // la sesion termina al escoger
-    G.geocoder.geocode({ placeId: pred.placeId }).then(function (r) {
+  // ---------- Consultas al mapa, en fila (1 por segundo) ----------
+  var ultimaConsulta = 0;
+  function turno() {
+    var espera = Math.max(0, ultimaConsulta + 1100 - Date.now());
+    ultimaConsulta = Date.now() + espera;
+    return new Promise(function (r) { setTimeout(r, espera); });
+  }
+  function nominatim(params, g, i) {
+    return turno().then(function () {
+      if (g !== gen[i]) throw 'viejo';
+      var ctl = window.AbortController ? new AbortController() : null;
+      var reloj = setTimeout(function () { if (ctl) ctl.abort(); }, 12000);
+      return fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=co&accept-language=es&bounded=1' + params,
+                   ctl ? { signal: ctl.signal } : undefined).then(function (r) {
+        clearTimeout(reloj);
+        if (r.status === 429) throw 'limite';
+        if (!r.ok) throw 'http';
+        return r.json();
+      }, function () { clearTimeout(reloj); throw 'red'; });
+    }).then(function (j) {
+      if (g !== gen[i]) throw 'viejo';
+      return Array.isArray(j) ? j : [];
+    });
+  }
+
+  // ---------- Donde se cruzan dos calles ----------
+  function lineas(res) {
+    var Ls = [];
+    res.forEach(function (x) {
+      var g = x.geojson; if (!g) return;
+      if (g.type === 'LineString') Ls.push(g.coordinates);
+      else if (g.type === 'MultiLineString') g.coordinates.forEach(function (c) { Ls.push(c); });
+    });
+    return Ls;
+  }
+  function cercaTramos(a1, a2, b1, b2, lat0) {
+    var kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 110540;
+    function P(c) { return [c[0] * kx, c[1] * ky]; }
+    var p1 = P(a1), p2 = P(a2), q1 = P(b1), q2 = P(b2);
+    function proy(p, s1, s2) {
+      var dx = s2[0] - s1[0], dy = s2[1] - s1[1], L2 = dx * dx + dy * dy;
+      var t = L2 ? Math.max(0, Math.min(1, ((p[0] - s1[0]) * dx + (p[1] - s1[1]) * dy) / L2)) : 0;
+      return [s1[0] + t * dx, s1[1] + t * dy];
+    }
+    var d = (p1[0] - p2[0]) * (q1[1] - q2[1]) - (p1[1] - p2[1]) * (q1[0] - q2[0]);
+    if (Math.abs(d) > 1e-9) {
+      var t = ((p1[0] - q1[0]) * (q1[1] - q2[1]) - (p1[1] - q1[1]) * (q1[0] - q2[0])) / d;
+      var u = -((p1[0] - p2[0]) * (p1[1] - q1[1]) - (p1[1] - p2[1]) * (p1[0] - q1[0])) / d;
+      if (t >= 0 && t <= 1 && u >= 0 && u <= 1) return { d: 0, lng: (p1[0] + t * (p2[0] - p1[0])) / kx, lat: (p1[1] + t * (p2[1] - p1[1])) / ky };
+    }
+    var mejor = null;
+    [[p1, q1, q2], [p2, q1, q2], [q1, p1, p2], [q2, p1, p2]].forEach(function (c) {
+      var r = proy(c[0], c[1], c[2]), dd = Math.hypot(c[0][0] - r[0], c[0][1] - r[1]);
+      if (!mejor || dd < mejor.d) mejor = { d: dd, lng: (c[0][0] + r[0]) / 2 / kx, lat: (c[0][1] + r[1]) / 2 / ky };
+    });
+    return mejor;
+  }
+  function cruces(A, B, lat0) {
+    var la = lineas(A), lb = lineas(B), out = [];
+    la.forEach(function (p) { for (var x = 0; x < p.length - 1; x++) {
+      lb.forEach(function (q) { for (var y = 0; y < q.length - 1; y++) {
+        var c = cercaTramos(p[x], p[x + 1], q[y], q[y + 1], lat0);
+        if (c && c.d <= 25) out.push(c);
+      } });
+    } });
+    var grupos = [];
+    out.forEach(function (c) {
+      var g = grupos.filter(function (z) { return L.latLng(z.lat, z.lng).distanceTo([c.lat, c.lng]) < 150; })[0];
+      if (!g) grupos.push({ lat: c.lat, lng: c.lng, sl: c.lat, sg: c.lng, n: 1 });
+      else { g.n++; g.sl += c.lat; g.sg += c.lng; g.lat = g.sl / g.n; g.lng = g.sg / g.n; }
+    });
+    return grupos;
+  }
+
+  // ---------- Buscar la direccion escrita o pegada ----------
+  // auto = true cuando lo pide el boton Pedir: se busca igual, sin obligar a escribir de nuevo.
+  function buscarTexto(i, auto) {
+    var dir = campo(i, 'dir').value.trim(), bar = campo(i, 'bar').value.trim();
+    if (origen[i] === 'gps' || origen[i] === 'compartida' || origen[i] === 'mapa') return Promise.resolve();
+    if (dir.length < 4) return Promise.resolve();
+    var c = compartida(dir);
+    if (c) { usarCompartida(i, c); return Promise.resolve(); }
+    var firma = dir + '|' + bar;
+    if (firma === buscado[i] && !auto) return Promise.resolve();
+    buscado[i] = firma;
+    var g = ++gen[i];
+    var p = partesDir(dir), ops = [], centro = null, caja = CALI_CAJA;
+    estado(i, '', 'Buscando esa dirección en el mapa de Cali…');
+    opciones(i, '');
+    function agregar(o) {
+      if (!coordOk(o)) return;
+      if (ops.some(function (x) { return L.latLng(x.lat, x.lng).distanceTo([o.lat, o.lng]) < 40; })) return;
+      ops.push(o);
+    }
+    var cadena = Promise.resolve();
+    // 1. El barrio da la zona donde buscar
+    if (bar) cadena = cadena.then(function () {
+      return nominatim('&limit=3&viewbox=' + CALI_CAJA + '&q=' + encodeURIComponent(bar + ', Cali, Valle del Cauca, Colombia'), g, i).then(function (l) {
+        // Primero un barrio; si el mapa no lo tiene como barrio, sirve un sitio con ese nombre
+        var b = l.filter(function (x) { return /neighbourhood|suburb|quarter|residential|city_district/.test(x.addresstype || x.type); })[0] || l[0];
+        if (b) { centro = { lat: +b.lat, lng: +b.lon }; var d = 0.012; caja = (centro.lng - d) + ',' + (centro.lat + d) + ',' + (centro.lng + d) + ',' + (centro.lat - d); }
+      });
+    });
+    // 2. La casa exacta, si el mapa la tiene
+    cadena = cadena.then(function () {
+      var q = (p.completa || p.texto) + (bar ? ', ' + bar : '') + ', Cali, Valle del Cauca, Colombia';
+      return nominatim('&addressdetails=1&limit=5&viewbox=' + CALI_CAJA + '&q=' + encodeURIComponent(q), g, i).then(function (l) {
+        l.forEach(function (x) {
+          var a = x.address || {};
+          if (a.house_number && (!p.via || clave(a.road) === clave(p.via))) {
+            agregar({ lat: +x.lat, lng: +x.lon, nivel: 1, calidad: 'exacta', titulo: [a.road, a.house_number].join(' # ') + (a.neighbourhood ? ', ' + a.neighbourhood : ''), prec: 'Exacta · con número de casa' });
+          } else if (!p.via && x.name) {
+            // Un sitio conocido (centro comercial, clinica, conjunto)
+            agregar({ lat: +x.lat, lng: +x.lon, nivel: 2, calidad: 'lugar', titulo: x.name + (a.neighbourhood ? ', ' + a.neighbourhood : ''), prec: 'Lugar encontrado por nombre' });
+          }
+        });
+      });
+    });
+    // 3. La esquina: "Cra 41D 2 # 55B-63" queda sobre la Cra 41D2, a unos 63 m de la Calle 55B
+    if (p.via && p.cruce) {
+      var A = null;
+      cadena = cadena.then(function () {
+        return nominatim('&limit=40&dedupe=0&polygon_geojson=1&viewbox=' + caja + '&q=' + encodeURIComponent(p.via + ', Cali'), g, i).then(function (l) {
+          A = l.filter(function (x) { return clave(x.name) === clave(p.via); });
+        });
+      }).then(function () {
+        if (!A || !A.length) return;
+        return nominatim('&limit=40&dedupe=0&polygon_geojson=1&viewbox=' + caja + '&q=' + encodeURIComponent(p.cruce + ', Cali'), g, i).then(function (l) {
+          var B = l.filter(function (x) { return clave(x.name) === clave(p.cruce); });
+          var cs = cruces(A, B, centro ? centro.lat : 3.42);
+          if (centro) cs.sort(function (x, y) { return L.latLng(x.lat, x.lng).distanceTo([centro.lat, centro.lng]) - L.latLng(y.lat, y.lng).distanceTo([centro.lat, centro.lng]); });
+          cs.slice(0, 3).forEach(function (c2, k) {
+            agregar({ lat: c2.lat, lng: c2.lng, nivel: 2, calidad: 'aproximada',
+                      titulo: 'Esquina de ' + p.via + ' con ' + p.cruce + (cs.length > 1 ? ' (sector ' + (k + 1) + ')' : ''),
+                      prec: p.metros ? 'Aproximada · la casa queda a unos ' + p.metros + ' m de esta esquina' : 'Esquina' });
+          });
+          if (!cs.length) {
+            var cerca = A.slice().sort(function (x, y) {
+              return centro ? L.latLng(+x.lat, +x.lon).distanceTo([centro.lat, centro.lng]) - L.latLng(+y.lat, +y.lon).distanceTo([centro.lat, centro.lng]) : 0;
+            })[0];
+            // Solo la calle sirve si queda en la zona del barrio; sin barrio no se adivina
+            if (cerca && centro && L.latLng(+cerca.lat, +cerca.lon).distanceTo([centro.lat, centro.lng]) < 1500) agregar({ lat: +cerca.lat, lng: +cerca.lon, nivel: 3, calidad: 'aproximada', titulo: p.via + (bar ? ', cerca de ' + bar : ''), prec: 'Aproximada · solo la calle, sin el número' });
+          }
+        });
+      });
+    }
+    return cadena.then(function () {
       if (g !== gen[i]) return;
-      var x = r.results && r.results[0];
-      if (!x) throw 'vacio';
-      var tipos = x.types || [], lt = x.geometry.location_type;
-      var esCasa = tipos.some(function (t) { return TIPOS_CASA.indexOf(t) >= 0; });
-      var soloZona = !esCasa && tipos.every(function (t) { return TIPOS_ZONA.indexOf(t) >= 0; });
-      var preciso = lt === 'ROOFTOP' || lt === 'RANGE_INTERPOLATED' || (lt === 'GEOMETRIC_CENTER' && esCasa);
-      if (!preciso || soloZona) {
-        anular(i);
-        estado(i, 'mal', 'Google solo ubica <b>la calle o el barrio</b>, no la casa. Escribe la dirección completa con el número (ej. <b>Cra 70 # 9-81</b>), o usa <b>Mi ubicación actual</b> si estás en el sitio.');
+      ops.sort(function (x, y) { return x.nivel - y.nivel; });
+      ops = ops.slice(0, 4);
+      if (!ops.length) {
+        estado(i, 'mal', '<b>No encontramos esa dirección en el mapa de Cali.</b> Tu texto queda guardado. ' + (bar ? 'Para el punto: usa' : 'Escribe también el <b>barrio</b> y toca <b>Buscar en el mapa</b>. O usa') + ' <b>Usar mi ubicación actual</b>, pega una <b>ubicación compartida</b> o <b>toca el mapa</b> donde queda.');
         return;
       }
-      // Texto corto para el conductor y barrio, si no lo habia escrito
-      var comp = {};
-      (x.address_components || []).forEach(function (c) { c.types.forEach(function (t) { comp[t] = c.long_name; }); });
-      var barInp = campo(i, 'bar');
-      var barrio = comp.neighborhood || comp.sublocality_level_1 || comp.sublocality || '';
-      if (barrio && !barInp.value.trim()) barInp.value = barrio;
-      var loc = x.geometry.location;
-      aceptar(i, loc.lat(), loc.lng(), 'google',
-        '<b>Dirección verificada por Google.</b>' +
-        (lt === 'RANGE_INTERPOLATED' ? '<br><span style="color:var(--m)">Ubicada sobre la cuadra según el número.</span>' : ''),
-        { calidad: lt === 'ROOFTOP' ? 'exacta' : 'aproximada', mapaTxt: x.formatted_address || null });
-    }).catch(function (e) {
-      if (g !== gen[i]) return;
-      anular(i);
-      estado(i, 'mal', 'No pudimos verificar esa dirección. Intenta de nuevo, o usa <b>Mi ubicación actual</b>.');
-    });
-  }
-
-  // ---------- Version gratis (sin Google) ----------
-  // Al terminar de escribir se hace UNA consulta al mapa libre (OpenStreetMap).
-  // Solo se acepta si encuentra esa casa con su numero exacto. Si no, se le
-  // pide al cliente su ubicacion por GPS o una ubicacion compartida: nunca se
-  // usa una calle, una esquina o el centro del barrio como si fuera la casa.
-  var ultimaGratis = { 1: '', 2: '' }, turnoOsm = 0;
-  function verificarGratis(i) {
-    if (GOOGLE_KEY || conf[i]) return;
-    if (origen[i] === 'gps' || origen[i] === 'compartida') return;
-    var dir = campo(i, 'dir').value.trim(), bar = campo(i, 'bar').value.trim();
-    if (dir.length < 6 || /^ubicaci[oó]n compartida$/i.test(dir)) return;
-    var firma = dir + '|' + bar;
-    if (firma === ultimaGratis[i]) return;
-    ultimaGratis[i] = firma;
-    var g = gen[i];
-    var q = dir.replace(/\b(cra|cr|kra|kr)\.?\s*(?=\d)/ig, 'Carrera ').replace(/\b(cll|cl)\.?\s*(?=\d)/ig, 'Calle ')
-               .replace(/\s*(no\.?|n°|nº)\s*(?=\d)/ig, ' # ');
-    estado(i, '', 'Verificando la dirección…');
-    var espera = Math.max(0, turnoOsm + 1100 - Date.now());
-    setTimeout(function () {
-      turnoOsm = Date.now();
-      fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=co&accept-language=es&bounded=1&viewbox=-76.62,3.56,-76.44,3.30&q=' +
-            encodeURIComponent(q + (bar ? ', ' + bar : '') + ', Cali, Valle del Cauca, Colombia'))
-        .then(function (r) { if (!r.ok) throw 'http'; return r.json(); })
-        .then(function (l) {
-          if (g !== gen[i]) return;
-          var num = (q.match(/#\s*([0-9A-Za-z]+)\s*-\s*(\d+)/) || []);
-          var exacta = (l || []).filter(function (x) {
-            var hn = (x.address && x.address.house_number) || '';
-            return hn && (!num[1] || hn.replace(/\s/g, '').toLowerCase() === (num[1] + '-' + num[2]).toLowerCase());
-          })[0];
-          if (exacta) {
-            aceptar(i, +exacta.lat, +exacta.lon, 'osm', '<b>Dirección encontrada en el mapa.</b>',
-                    { calidad: 'exacta', mapaTxt: String(exacta.display_name || '').split(',').slice(0, 3).join(',') });
-          } else {
-            estado(i, '', 'Tu dirección queda guardada tal cual. Ahora falta el punto en el mapa:' +
-              '<br>• Si estás ahí, toca <b>Usar mi ubicación actual</b>.' +
-              '<br>• Si no, pídele a quien esté en ese sitio su <b>ubicación por WhatsApp</b> y toca <b>Pegar ubicación compartida</b>.');
+      opciones(i, '<div class="res-t">¿Cuál es? Toca la correcta:</div>' + ops.map(function (o, k) {
+        return '<button type="button" class="op" data-k="' + k + '"><b>' + esc(o.titulo) + '</b><small class="' + (o.nivel === 1 ? 'p-ok' : 'p-ap') + '">' + esc(o.prec) + '</small></button>';
+      }).join(''));
+      $('f' + i).querySelectorAll('.sug .op').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var o = ops[+b.dataset.k];
+          if (aceptar(i, o.lat, o.lng, 'texto', o.nivel === 1 ? '<b>Dirección encontrada.</b>' :
+              '<b>Punto aproximado.</b> Si no quedó en la puerta, <b>arrastra el marcador</b> en el mapa.', { calidad: o.calidad, mapaTxt: o.titulo })) {
+            if (map) map.setView([o.lat, o.lng], 17);
           }
-        })
-        .catch(function () {
-          if (g !== gen[i]) return;
-          ultimaGratis[i] = '';
-          estado(i, 'mal', 'No pudimos verificar la dirección (sin conexión). Usa <b>Mi ubicación actual</b> o pega una ubicación compartida.');
         });
-    }, espera);
-  }
-
-  // ---------- Texto a partir del GPS (solo para que el conductor lea) ----------
-  function textoDeGps(i, ll) {
-    // El GPS da el punto; el nombre del lugar se muestra aparte y la
-    // direccion escrita por el cliente no se toca.
-    if (G) {
-      var g = gen[i];
-      G.geocoder.geocode({ location: { lat: ll.lat, lng: ll.lng } }).then(function (r) {
-        var x = r.results && r.results[0];
-        if (x && g === gen[i]) { meta[i].mapaTxt = x.formatted_address || null; mapaTxt(i); }
-      }).catch(function () {});
-    } else {
-      buscarDireccion(i, ll);
-    }
-    if (!campo(i, 'dir').value.trim()) {
-      estado(i, 'ok', estadoTxt(i) + '<br><span style="color:#92400E">Escribe arriba la dirección completa (ej. Cra 41D 2 # 55B-63) para que el conductor la lea.</span>');
-    }
-  }
-  function estadoTxt(i) {
-    return '✓ <b>Ubicación tomada por GPS</b>' + (meta[i].precision ? ', con ' + meta[i].precision + ' m de precisión.' : '.');
-  }
-
-  // ---------------- Mapa y precio por distancia ----------------
-  function iniciarMapa() {
-    if (gMap) return;
-    if (map) { map.invalidateSize(); return; }
-    // Con llave de Google: mapa de Google (sus terminos lo exigen para
-    // mostrar direcciones de Google). Sin llave: OpenStreetMap, como antes.
-    cargarGoogle().then(function () {
-      if (gMap || map) return;
-      gMap = new G.maps.Map($('mapa'), {
-        center: { lat: CALI[0], lng: CALI[1] }, zoom: 12,
-        disableDefaultUI: true, zoomControl: true, clickableIcons: false, gestureHandling: 'greedy'
       });
-      [1, 2].forEach(function (k) { if (pts[k]) ponerMarca(k, pts[k]); });
-      encuadrar();
-    }).catch(function () {
-      if (gMap || map) return;
-      map = L.map('mapa', { zoomControl: false }).setView(CALI, 12);
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19, attribution: '&copy; OpenStreetMap'
-      }).addTo(map);
-      L.circle(CALI, { radius: 15000, color: '#E8590C', weight: 2, dashArray: '8 6', fillColor: '#E8590C', fillOpacity: 0.10 }).addTo(map);
-      [1, 2].forEach(function (k) { if (pts[k]) ponerMarca(k, pts[k]); });
-      setTimeout(function () { map.invalidateSize(); encuadrar(); }, 250);
+      estado(i, '', auto ? 'Encontramos estas opciones. Toca la correcta y vuelve a tocar <b>Pedir</b>.' : '');
+    }).catch(function (e) {
+      if (e === 'viejo' || g !== gen[i]) return;
+      buscado[i] = '';
+      estado(i, 'mal', e === 'limite' ? '<b>El buscador está ocupado.</b> Espera unos segundos y toca <b>Buscar en el mapa</b>.'
+                                     : '<b>No hay conexión con el buscador.</b> Revisa tus datos y toca <b>Buscar en el mapa</b>, o usa el GPS.');
     });
   }
 
-  // El punto solo se pone desde una direccion verificada, el GPS o una
-  // ubicacion compartida (ver aceptar). Ya no se marca tocando el mapa.
+  // ---------------- Mapa ----------------
+  function iniciarMapa() {
+    if (map) { map.invalidateSize(); return; }
+    map = L.map('mapa', { zoomControl: false }).setView(CALI, 12);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+    L.circle(CALI, { radius: 15000, color: '#E8590C', weight: 2, dashArray: '8 6', fillColor: '#E8590C', fillOpacity: 0.10 }).addTo(map);
+    // Tocar el mapa fija el punto que esta activo (recogida o entrega)
+    map.on('click', function (e) {
+      var i = puntoActivo;
+      if (aceptar(i, e.latlng.lat, e.latlng.lng, 'mapa', '<b>Punto marcado en el mapa.</b> Puedes arrastrarlo para afinarlo.', { calidad: 'mapa' })) nombreDe(i, e.latlng);
+    });
+    [1, 2].forEach(function (k) { if (pts[k]) ponerMarca(k, pts[k]); });
+    setTimeout(function () { map.invalidateSize(); encuadrar(); }, 250);
+  }
+
   function encuadrar() {
+    if (!map) return;
     var l = [pts[1], pts[2]].filter(Boolean);
-    if (gMap) {
-      if (l.length === 2) {
-        var b = new google.maps.LatLngBounds();
-        l.forEach(function (p) { b.extend({ lat: p.lat, lng: p.lng }); });
-        gMap.fitBounds(b, 50);
-      } else if (l.length === 1) { gMap.setCenter({ lat: l[0].lat, lng: l[0].lng }); gMap.setZoom(16); }
-    } else if (map) {
-      if (l.length === 2) map.fitBounds(L.latLngBounds(l), { padding: [40, 40], maxZoom: 16 });
-      else if (l.length === 1) map.setView(l[0], 15);
-    }
+    if (l.length === 2) map.fitBounds(L.latLngBounds(l), { padding: [40, 40], maxZoom: 16 });
+    else if (l.length === 1) map.setView(l[0], 16);
     rutaCliente();
   }
 
-  // Ruta por calles entre los dos puntos. Si el servicio de rutas no
-  // responde, NO se dibuja una linea recta: se dice que no se calculo.
+  // Ruta por calles. Si el servicio no responde no se dibuja una linea recta.
   var capaRutaC = null, genRuta = 0;
   function rutaCliente() {
     var g = ++genRuta;
@@ -720,7 +734,7 @@
     var a = $('ayuda');
     if (pts[1] && pts[2]) { a.style.display = 'none'; return; }
     a.style.display = 'block';
-    a.textContent = puntoActivo === 1 ? 'Escribe dónde recogemos' : 'Escribe dónde entregamos';
+    a.textContent = puntoActivo === 1 ? 'Recogida: escribe la dirección, usa tu GPS o toca el mapa' : 'Entrega: escribe la dirección, usa tu GPS o toca el mapa';
   }
 
   function kmRecorrido() {
@@ -767,7 +781,7 @@
   // escuchamos varias y nos quedamos con la mas precisa.
   var BUENA = 25, PASABLE = 45;     // metros
   window.precisionUltima = null;
-  var buscandoGps = false;
+  var buscandoGps = false, ultimoErrGps = null;
 
   var AYUDA_GPS =
     '<br><br><b>Para que quede bien:</b>' +
@@ -780,13 +794,13 @@
   function miUbicacion(i) {
     enfocar(i);
     if (!navigator.geolocation) {
-      $('gps-info').innerHTML = '<b>Este celular no deja usar la ubicación.</b> Toca el mapa para marcar el punto.';
+      estado(i, 'mal', '<b>Este celular no deja usar la ubicación.</b> Escribe la dirección o toca el mapa.');
       return;
     }
     if (buscandoGps) return;
     buscandoGps = true;
 
-    var mejor = null, reloj = null, corte = null;
+    var mejor = null, reloj = null, corte = null; ultimoErrGps = null;
     $('gps-info').textContent = 'Buscando tu ubicación… dale unos segundos, el GPS tarda en enganchar.';
 
     function listo() {
@@ -795,7 +809,10 @@
       buscandoGps = false;
 
       if (!mejor) {
-        $('gps-info').innerHTML = '<b>No pudimos tomar tu ubicación.</b> Revisa que el GPS esté encendido y que le hayas dado permiso a la app.' + AYUDA_GPS;
+        estado(i, 'mal', ultimoErrGps === 1
+          ? '<b>No diste permiso de ubicación.</b> Actívalo en el candado de la barra de direcciones (o en Ajustes del celular) y vuelve a tocar <b>Usar mi ubicación actual</b>.'
+          : '<b>No pudimos tomar tu ubicación.</b> Revisa que el GPS esté encendido. También puedes escribir la dirección o tocar el mapa.');
+        $('gps-info').innerHTML = ultimoErrGps === 1 ? '' : AYUDA_GPS.replace('<br><br>', '');
         return;
       }
       var m = Math.round(mejor.coords.accuracy);
@@ -803,13 +820,13 @@
       // Solo se acepta un GPS preciso: si no, el conductor llegaria a otra cuadra
       if (m <= GPS_MAX) {
         var ll = L.latLng(mejor.coords.latitude, mejor.coords.longitude);
-        if (aceptar(i, ll.lat, ll.lng, 'gps', '<b>Ubicación tomada por GPS</b>, con ' + m + ' metros de precisión.', { precision: m, calidad: 'gps' })) {
-          textoDeGps(i, ll);
+        if (aceptar(i, ll.lat, ll.lng, 'gps', '<b>Ubicación tomada por GPS</b>, con ' + m + ' metros de precisión. Si no quedó en la puerta, arrastra el marcador.', { precision: m, calidad: 'gps' })) {
+          if (map) map.setView(ll, 17);
+          nombreDe(i, ll);
           $('gps-info').innerHTML = '';
         }
       } else {
-        anular(i);
-        estado(i, 'mal', 'El GPS solo dio <b>' + m + ' metros</b> de precisión y así no podemos confirmar el punto. Toca otra vez <b>Usar mi ubicación actual</b> para reintentar.');
+        estado(i, 'mal', 'El GPS solo dio <b>' + m + ' metros</b> de precisión: así el conductor podría llegar a otra cuadra. Toca otra vez <b>Usar mi ubicación actual</b>, o toca el mapa donde estás.');
         $('gps-info').innerHTML = '<b>El GPS no está preciso todavía.</b>' + AYUDA_GPS;
       }
     }
@@ -819,7 +836,7 @@
       var m = Math.round(mejor.coords.accuracy);
       if (m <= BUENA) { listo(); return; }               // ya esta bueno
       $('gps-info').innerHTML = 'Buscando… por ahora va en <b>' + m + ' metros</b>. Esperando que mejore.';
-    }, function () { listo(); },
+    }, function (e) { ultimoErrGps = e && e.code; listo(); },
        { enableHighAccuracy: true, maximumAge: 0, timeout: 25000 });
 
     corte = setTimeout(listo, 20000);   // 20 segundos dandole chance al GPS
@@ -848,44 +865,43 @@
 
   ['f1', 'f2'].forEach(function (id) {
     var n = id === 'f1' ? 1 : 2;
+    var dirInp = campo(n, 'dir'), barInp = campo(n, 'bar');
     $(id).querySelectorAll('input').forEach(function (inp) {
       inp.addEventListener('focus', function () { enfocar(n); });
-      if (inp.classList.contains('link')) return;
-      if (inp.classList.contains('dir') || inp.classList.contains('bar')) {
-        inp.addEventListener('blur', function () { setTimeout(function () { verificarGratis(n); }, 150); });
-      }
-      inp.addEventListener('input', function () {
-        if (!inp.classList.contains('dir') && !inp.classList.contains('bar')) return;
-        if (inp.classList.contains('dir')) inp.dataset.escrito = '1';
-        // Un punto que salio del GPS o de una ubicacion compartida no depende
-        // del texto: se conserva al escribir la direccion. Un punto que salio
-        // de BUSCAR el texto si se anula, porque ese texto ya cambio.
-        if (origen[n] === 'gps' || origen[n] === 'compartida') return;
-        if (pts[n]) estado(n, '', 'Cambiaste la dirección: vuelve a confirmar dónde queda.');
-        anular(n);
-        pedirSugerencias(n);
-      });
     });
-    // Ubicacion compartida, en su propio campo (no pisa la direccion)
+    [dirInp, barInp].forEach(function (inp) {
+      inp.addEventListener('input', function () {
+        dirInp.dataset.auto = '';
+        // Un punto del GPS, compartido o marcado en el mapa no depende del
+        // texto: se conserva. Un punto que salio de BUSCAR el texto se anula.
+        if (origen[n] === 'texto') { anular(n); estado(n, '', 'Cambiaste la dirección: búscala de nuevo.'); }
+        else opciones(n, '');
+        // Si pegaron un enlace de ubicacion en la direccion, se usa de una
+        var c = inp === dirInp ? compartida(dirInp.value) : null;
+        if (c) { dirInp.value = ''; usarCompartida(n, c); }
+      });
+      // Al terminar de escribir o pegar, se busca sola
+      inp.addEventListener('blur', function () { setTimeout(function () { if (!conf[n]) buscarTexto(n); }, 200); });
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); buscado[n] = ''; buscarTexto(n); } });
+    });
+    dirInp.addEventListener('paste', function () { setTimeout(function () { if (!conf[n] && !compartida(dirInp.value)) buscarTexto(n); }, 100); });
+    $(id).querySelector('.buscar').addEventListener('click', function () {
+      if (dirInp.value.trim().length < 4) { estado(n, 'mal', 'Escribe primero la dirección.'); dirInp.focus(); return; }
+      if (origen[n] && origen[n] !== 'texto') { origen[n] = null; conf[n] = false; }
+      buscado[n] = ''; buscarTexto(n);
+    });
+    // Ubicacion compartida en su propio campo
     var link = $(id).querySelector('.link');
     $(id).querySelector('.pegar').addEventListener('click', function () {
       link.style.display = link.style.display === 'block' ? 'none' : 'block';
       if (link.style.display === 'block') link.focus();
     });
     link.addEventListener('input', function () {
-      var c = compartida(link.value);
       if (!link.value.trim()) return;
-      if (c && c.corto) {
-        estado(n, 'mal', 'Ese enlace corto no se puede leer desde aquí. Ábrelo en Google Maps, toca Compartir y copia el enlace completo, o usa <b>Usar mi ubicación actual</b>.');
-        return;
-      }
+      var c = compartida(link.value);
       if (!c) { estado(n, 'mal', 'Ese enlace no trae una ubicación. Copia el enlace de la ubicación de WhatsApp o Google Maps.'); return; }
-      gen[n]++;
-      if (aceptar(n, c.lat, c.lng, 'compartida', '<b>Ubicación compartida recibida.</b>', { calidad: 'compartida' })) {
-        link.value = ''; link.style.display = 'none';
-        textoDeGps(n, L.latLng(c.lat, c.lng));
-        if (!campo(n, 'dir').value.trim()) estado(n, 'ok', '✓ <b>Ubicación compartida recibida.</b><br><span style="color:#92400E">Escribe arriba la dirección o el nombre del sitio para que el conductor la lea.</span>');
-      }
+      link.value = ''; link.style.display = 'none';
+      usarCompartida(n, c);
     });
   });
 
@@ -901,7 +917,10 @@
     t = conf[1]; conf[1] = conf[2]; conf[2] = t;
     t = origen[1]; origen[1] = origen[2]; origen[2] = t;
     t = meta[1]; meta[1] = meta[2]; meta[2] = t;
+    t = buscado[1]; buscado[1] = buscado[2]; buscado[2] = t;
+    t = campo(1, 'dir').dataset.auto; campo(1, 'dir').dataset.auto = campo(2, 'dir').dataset.auto || ''; campo(2, 'dir').dataset.auto = t || '';
     gen[1]++; gen[2]++;
+    opciones(1, ''); opciones(2, '');
     [1, 2].forEach(function (k) {
       quitarMarca(k);
       if (pts[k]) ponerMarca(k, pts[k]);
@@ -946,24 +965,29 @@
     var err = $('err'), ok = $('ok');
     ok.style.display = 'none';
     if (enviando) return;
-    if (val('f1', 'dir').length < 3 || val('f2', 'dir').length < 3) {
-      err.textContent = 'Escribe la dirección de recogida y la de entrega.';
-      return;
+    for (var q0 = 1; q0 <= 2; q0++) {
+      if (val('f' + q0, 'dir').length < 3) {
+        err.textContent = q0 === 1 ? 'Falta la dirección de recogida: escríbela o usa tu ubicación actual.'
+                                   : 'Falta la dirección de entrega: escríbela o usa tu ubicación actual.';
+        enfocar(q0); $('f' + q0).scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
+    // Cada punto necesita su ubicacion en el mapa. Si hay direccion escrita
+    // pero aun no hay punto, se busca ya mismo (sin obligar a escribir de nuevo).
+    for (var q = 1; q <= 2; q++) {
+      if (!conf[q] || !coordOk(pts[q])) {
+        var nom = q === 1 ? 'recogida' : 'entrega';
+        err.textContent = 'Falta ubicar en el mapa la dirección de ' + nom + '. La estamos buscando: escoge la opción correcta y vuelve a tocar Pedir.';
+        enfocar(q);
+        $('f' + q).scrollIntoView({ behavior: 'smooth', block: 'center' });
+        buscarTexto(q, true);
+        return;
+      }
     }
     if (!pago) {
       err.textContent = 'Marca cómo vas a pagar: efectivo o Nequi.';
       return;
-    }
-    // Solo se pide con las dos ubicaciones confirmadas y validas
-    for (var q = 1; q <= 2; q++) {
-      if (!conf[q] || !coordOk(pts[q])) {
-        err.textContent = q === 1
-          ? 'Falta verificar dónde recogemos: escribe la dirección exacta, usa «Mi ubicación actual» o pega una ubicación compartida.'
-          : 'Falta verificar dónde entregamos: escribe la dirección exacta, usa «Mi ubicación actual» o pega una ubicación compartida.';
-        enfocar(q);
-        $('f' + q).scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return;
-      }
     }
     var precio = calcular();
     if (precio === null) {
