@@ -1,0 +1,92 @@
+# Ya te llega — guía para quien trabaje en este proyecto
+
+Mandados y domicilios en moto, solo en Cali, Colombia. Tres aplicaciones web
+instalables (PWA), sin tiendas de aplicaciones. **Este repositorio es
+público**: aquí nunca van contraseñas, llaves privadas ni la llave
+`service_role` de Supabase, ni datos personales, ni cifras del negocio.
+
+## Cómo trabajar (reglas del dueño)
+
+- Responder en **español**, tono de Cali, frases cortas. **Un paso y una sola
+  pregunta por mensaje.** El dueño no es técnico y prueba en su celular.
+- **Solo mejorar: nunca romper ni quitar lo que ya funcionaba.**
+- **No publicar en producción** (`cliente.html`, `conductor.html`,
+  `panel.html`) sin su aprobación expresa. Lo nuevo se prueba primero en
+  copias `*-prueba.html`.
+- **Antes de cambiar la base de datos, avisar y esperar respuesta.**
+- No gastar plata ni activar servicios de pago sin presentar el costo.
+- Nada de Firebase, ni archivos `.bat`, ni pedirle que use una terminal.
+- No decir que algo «quedó solucionado» porque el código cambió: decir qué se
+  probó de verdad y qué falta probar en el celular.
+- Los enlaces se entregan en bloque de código, con `?v=N` nuevo para evitar
+  la caché.
+
+## Dos Claude, una sola fuente de verdad
+
+Trabajan en este proyecto **Claude Code** y el chat de claude.ai. La fuente de
+verdad es **este repositorio**. Reparto: el chat piensa (negocio, tarifas,
+textos, estrategia) y Claude Code construye (código, base de datos,
+publicación). Código y base de datos se tocan desde **un solo lado a la vez**.
+Antes de empezar: `git fetch` y mirar `git log HEAD..origin/main`.
+
+## Piezas
+
+| Archivo | Qué es |
+|---|---|
+| `index.html` | Menú de entrada |
+| `cliente.html` | Cliente: registro, pedir con mapa, seguir la moto, ver la foto de entrega |
+| `conductor.html` | Conductor: registro con documentos, conectarse, ofertas, ruta, entrega con código y foto, ganancias |
+| `panel.html` | Administrador: en vivo, resumen, conductores, clientes, incidencias |
+| `motero.html` | Solo redirige a `conductor.html` (enlaces viejos) |
+| `cliente-prueba.html`, `conductor-prueba.html` | Copias de prueba, **no aprobadas** |
+| `ytl.js`, `ytl.css` | Código común: cliente Supabase, sesión por pantalla, sonido |
+| `base-de-datos/` | SQL numerados y ya corridos en Supabase |
+| `MEJORAS.md` | Lecciones aprendidas de otras apps de domicilios |
+
+Cada pantalla guarda **su propia sesión** (`ytl-<pagina>`), para poder estar
+como cliente, conductor y administrador en el mismo celular.
+
+## Base de datos (Supabase, São Paulo, plan gratis)
+
+Tablas: `clientes`, `moteros` (= conductores), `pedidos`, `codigos_entrega`,
+`incidencias`, `administradores`, `tarifas`. RLS activada en todas.
+
+- Los cambios de estado de un pedido pasan **solo por funciones**
+  (`tomar_pedido`, `avanzar_pedido`, `entregar_pedido`, `cancelar_pedido`,
+  `guardar_foto_entrega`, `reportar_posicion`). No hay UPDATE directo.
+- El **precio lo calcula el servidor** con triggers sobre `pedidos`. Los
+  `BEFORE INSERT` corren en **orden alfabético**: `pedidos_precio` y después
+  `t_antes_pedido`. **`antes_pedido()` nunca debe tocar el precio**: lo
+  pisaría. Ya pasó una vez.
+- Las tarifas viven en la tabla `tarifas` (una sola fila): `tramos`,
+  `margen_cop`, `km_extra_cop`, `max_km`, `factor_ruta`. Se cambian desde
+  Supabase, sin tocar código. El cliente lee los mismos valores para mostrar
+  el precio antes de pedir.
+- Las fotos y documentos van al depósito **privado** `documentos`, en la
+  carpeta `<auth.uid()>/`. Se ven con URL firmada.
+- El plan gratis **se pausa** tras ~1 semana sin actividad: entrar a Supabase
+  y pulsar «Resume project».
+
+### Cómo cambiar la base de datos
+
+1. Avisar al dueño y esperar su OK.
+2. Escribir un archivo `base-de-datos/NN-nombre.sql` que se pueda correr
+   varias veces sin dañar nada, y terminarlo con una consulta de comprobación.
+3. Probar en el editor SQL de Supabase con una transacción que se deshace
+   (`raise exception` al final), insertando un pedido de prueba, **antes** de
+   afirmar que funciona.
+4. Guardar el `.sql` en este repositorio.
+
+## Mapas y direcciones
+
+Leaflet + OpenStreetMap. Direcciones con Nominatim (máx. 1 consulta por
+segundo) y calles con Overpass; rutas con el OSRM público, que es solo de
+demostración. En Cali el mapa libre casi no tiene número de casa: el **GPS y
+las coordenadas** mandan, el texto es una etiqueta. A Waze y Google Maps se
+les manda el punto, no la dirección escrita.
+
+## Para probar sin dañar nada
+
+Servidor local de pruebas: `node` con un servidor estático sobre la carpeta;
+las copias con inicio de sesión falso nunca se suben. Cambiar el enlace con
+`?v=N` para saltarse la caché del celular.
