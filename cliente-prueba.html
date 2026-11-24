@@ -418,6 +418,32 @@
     marcas[i] = null;
   }
 
+  // ---------- Las calles que cruzan, para ubicar un punto sin numero de casa ----------
+  // En Cali uno se ubica asi: "la 55A entre carreras 41C y 41E". El mapa libre
+  // casi nunca trae el numero de la casa, pero si las calles. Se le pregunta
+  // al mismo buscador (sin servicios extra, que se caen) que calle hay un poco
+  // al norte, sur, este y oeste del punto, y se quedan las del tipo contrario.
+  function crucesCerca(ll, principal, g, i) {
+    var d = 0.0007;   // unos 78 m
+    var sondas = [[ll.lat + d, ll.lng], [ll.lat - d, ll.lng], [ll.lat, ll.lng + d], [ll.lat, ll.lng - d]];
+    var esCarrera = /^(carrera|transversal)/i.test(principal || '');
+    var tipoBueno = esCarrera ? /^(calle|diagonal)/i : /^(carrera|transversal)/i;
+    var nombres = [], cadena = Promise.resolve();
+    sondas.forEach(function (p) {
+      cadena = cadena.then(function () {
+        if (g !== gen[i]) throw 'viejo';
+        return turno().then(function () {
+          return fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=17&accept-language=es&lat=' + p[0] + '&lon=' + p[1]);
+        }).then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) {
+            var n = j && j.address && j.address.road;
+            if (n && clave(n) !== clave(principal) && tipoBueno.test(n) && nombres.indexOf(n) < 0) nombres.push(n);
+          });
+      });
+    });
+    return cadena.then(function () { return nombres; }, function () { return []; });
+  }
+
   // ---------- De coordenadas a un nombre legible (geocodificacion inversa) ----------
   // Llena la direccion SOLO si el cliente no habia escrito nada.
   function nombreDe(i, ll) {
@@ -440,6 +466,17 @@
       if (dir.dataset.auto === '1') {
         estado(i, 'ok', $('f' + i).querySelector('.est').innerHTML.split('<br>')[0] +
           '<br><span style="color:#92400E">Completa la dirección con el número de la casa (ej. Cra 41D 2 # 55B-63) para que el conductor la lea.</span>');
+      }
+      // Sin numero de casa: se dice al menos entre que calles queda
+      if (a.road && !a.house_number && dir.dataset.auto === '1') {
+        crucesCerca(ll, a.road, g, i).then(function (ns) {
+          if (g !== gen[i] || !ns.length || dir.dataset.auto !== '1') return;
+          var txt = ns.length === 1 ? a.road + ' con ' + ns[0] : a.road + ' entre ' + ns[0] + ' y ' + ns[1];
+          dir.value = txt;
+          buscado[i] = dir.value.trim() + '|' + bar.value.trim();
+          meta[i].mapaTxt = txt + (barrio ? ', ' + barrio : '');
+          mapaTxt(i);
+        });
       }
     }).catch(function () {});
   }

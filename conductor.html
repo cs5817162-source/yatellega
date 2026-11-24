@@ -405,14 +405,33 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
   // cliente, no el texto de la direccion. En Cali una direccion escrita
   // puede caer a varias cuadras; el punto no se equivoca.
   // Si el pedido es viejo y no trae coordenadas, se manda el texto.
+  // Aviso pegado a los botones de Waze y Google Maps de esa parada
+  function avisoNav(pre, txt) {
+    var w = $(pre + '-waze'); if (!w) return;
+    var id = pre + '-sinpunto', el = $(id);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = id;
+      el.style.cssText = 'background:#FEF3C7;color:#78350F;border-radius:10px;padding:8px 10px;font-size:13px;line-height:1.4;margin:8px 0';
+      w.parentNode.parentNode.insertBefore(el, w.parentNode);
+    }
+    el.textContent = txt;
+    el.style.display = txt ? 'block' : 'none';
+  }
   function enlaces(pre, d, b, lat, lng) {
-    var hayPunto = (lat !== null && lat !== undefined && lng !== null && lng !== undefined);
+    // Solo se navega con un punto valido: numeros reales, en rango y en la zona de Cali
+    var la = (lat === null || lat === undefined || lat === '') ? NaN : Number(lat);
+    var lo = (lng === null || lng === undefined || lng === '') ? NaN : Number(lng);
+    var hayPunto = isFinite(la) && isFinite(lo) && la > 3.15 && la < 3.65 && lo > -76.8 && lo < -76.3;
     if (hayPunto) {
-      var ll = lat + ',' + lng;
+      avisoNav(pre, '');
+      var ll = la.toFixed(6) + ',' + lo.toFixed(6);   // siempre latitud, longitud
       $(pre + '-waze').href = 'https://waze.com/ul?ll=' + encodeURIComponent(ll) + '&navigate=yes';
       $(pre + '-gmaps').href = 'https://www.google.com/maps/dir/?api=1&destination=' +
                                encodeURIComponent(ll) + '&travelmode=driving';
     } else {
+      // Sin punto confirmado: no abrimos una ruta a ciegas, solo una busqueda del texto
+      avisoNav(pre, 'Ojo: este pedido no trae el punto confirmado en el mapa. Waze y Google Maps solo buscarán la dirección escrita. Llama al cliente para confirmarla antes de salir.');
       var q = encodeURIComponent(dirTxt(d, b) + ', Valle del Cauca, Colombia');
       $(pre + '-waze').href = 'https://waze.com/ul?q=' + q + '&navigate=no';
       $(pre + '-gmaps').href = 'https://www.google.com/maps/search/?api=1&query=' + q;

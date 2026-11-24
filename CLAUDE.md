@@ -38,7 +38,7 @@ Antes de empezar: `git fetch` y mirar `git log HEAD..origin/main`.
 | `conductor.html` | Conductor: registro con documentos, conectarse, ofertas, ruta, entrega con código y foto, ganancias |
 | `panel.html` | Administrador: en vivo, resumen, conductores, clientes, incidencias |
 | `motero.html` | Solo redirige a `conductor.html` (enlaces viejos) |
-| `cliente-prueba.html`, `conductor-prueba.html` | Copias de prueba, **no aprobadas** |
+| `cliente-prueba.html`, `conductor-prueba.html` | Copias para probar cambios antes de pasarlos a producción. Hoy son iguales a las de producción |
 | `ytl.js`, `ytl.css` | Código común: cliente Supabase, sesión por pantalla, sonido |
 | `base-de-datos/` | SQL numerados y ya corridos en Supabase |
 | `MEJORAS.md` | Lecciones aprendidas de otras apps de domicilios |
@@ -79,11 +79,24 @@ Tablas: `clientes`, `moteros` (= conductores), `pedidos`, `codigos_entrega`,
 
 ## Mapas y direcciones
 
-Leaflet + OpenStreetMap. Direcciones con Nominatim (máx. 1 consulta por
-segundo) y calles con Overpass; rutas con el OSRM público, que es solo de
-demostración. En Cali el mapa libre casi no tiene número de casa: el **GPS y
-las coordenadas** mandan, el texto es una etiqueta. A Waze y Google Maps se
-les manda el punto, no la dirección escrita.
+Leaflet + OpenStreetMap, todo gratis. Rutas con el OSRM público, que es solo
+de demostración. En Cali el mapa libre casi no tiene número de casa: el **GPS
+y las coordenadas** mandan, el texto es una etiqueta que nunca se pisa. A
+Waze y Google Maps se les manda el punto, no la dirección escrita.
+
+- **Dirección escrita → punto:** `cliente.html` interpreta la nomenclatura de
+  Cali ("Cra 41D 2 # 55B-63"), busca la geometría de las dos calles en
+  Nominatim y calcula dónde se cruzan. Tarda unos 5 s. Si no encuentra el
+  número, queda en la esquina o en la calle y lo dice.
+- **GPS → texto:** acepta hasta 50 m; hasta 150 m lo acepta pidiendo revisar
+  el marcador; más de 150 m lo rechaza. Sin número de casa, sondea con
+  Nominatim las calles de al lado y escribe "Calle 55A entre Carrera 41E y
+  Carrera 41C".
+- **No usar Overpass** (el servicio público de calles): se cae con
+  frecuencia (502 y tiempos agotados). Nominatim permite 1 consulta por
+  segundo; el código ya las espacia con `turno()`.
+- Cada punto guarda de dónde salió, la precisión y si el cliente lo
+  confirmó (columnas de `pedidos`, script 09).
 
 ## Para probar sin dañar nada
 
