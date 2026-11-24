@@ -18,6 +18,7 @@
   .ayuda { position:absolute; z-index:500; left:50%; bottom:10px; transform:translateX(-50%); background:#111827; color:#fff; border-radius:999px; padding:8px 16px; font-size:13px; font-weight:600; white-space:nowrap; }
   .miub { border:0; background:transparent; color:var(--n); font-weight:700; font-size:13px; cursor:pointer; font-family:inherit; flex:none; padding:8px 0 0; }
   .gps-info { font-size:13px; color:var(--m); line-height:1.45; margin-top:8px; }
+  .acc .buscar, .acc .pegar, input.ref, input.link { display:none !important; }
   .sug .op { display:block; width:100%; text-align:left; border:0; border-top:1px solid #EEE; background:#fff; padding:9px 2px; font-family:inherit; cursor:pointer; }
   .sug .op b { display:block; font-size:14px; color:var(--g); font-weight:600; }
   .sug .op small { display:block; font-size:12px; color:var(--m); margin-top:1px; }
@@ -648,11 +649,17 @@
       ops.sort(function (x, y) { return x.nivel - y.nivel; });
       ops = ops.slice(0, 4);
       if (!ops.length) {
-        estado(i, 'mal', '<b>No encontramos esa dirección en el mapa de Cali.</b> Tu texto queda guardado. ' + (bar ? 'Para el punto: usa' : 'Escribe también el <b>barrio</b> y toca <b>Buscar en el mapa</b>. O usa') + ' <b>Usar mi ubicación actual</b>, pega una <b>ubicación compartida</b> o <b>toca el mapa</b> donde queda.');
+        estado(i, 'mal', '<b>No encontramos esa dirección en el mapa de Cali.</b> Tu texto queda guardado. ' + (bar ? 'Revísala, o' : 'Escribe también el <b>barrio</b>, o') + ' toca <b>Usar mi ubicación actual</b> si estás en ese sitio, o toca el mapa donde queda.');
         return;
       }
-      opciones(i, '<div class="res-t">¿Cuál es? Toca la correcta:</div>' + ops.map(function (o, k) {
-        return '<button type="button" class="op" data-k="' + k + '"><b>' + esc(o.titulo) + '</b><small class="' + (o.nivel === 1 ? 'p-ok' : 'p-ap') + '">' + esc(o.prec) + '</small></button>';
+      // La mejor opcion se toma sola: el cliente no tiene que escoger nada
+      var o0 = ops[0];
+      aceptar(i, o0.lat, o0.lng, 'texto', o0.nivel === 1 ? '<b>Dirección ubicada en el mapa.</b>' :
+          '<b>Dirección ubicada</b> (cerca de la esquina). Si no quedó en la puerta, usa <b>Usar mi ubicación actual</b> o arrastra el marcador.', { calidad: o0.calidad, mapaTxt: o0.titulo });
+      if (map) map.setView([o0.lat, o0.lng], 17);
+      if (ops.length < 2) return;
+      opciones(i, '<div class="res-t">¿No es ahí? Toca otra:</div>' + ops.slice(1).map(function (o, k) {
+        return '<button type="button" class="op" data-k="' + (k + 1) + '"><b>' + esc(o.titulo) + '</b><small class="' + (o.nivel === 1 ? 'p-ok' : 'p-ap') + '">' + esc(o.prec) + '</small></button>';
       }).join(''));
       $('f' + i).querySelectorAll('.sug .op').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -663,12 +670,11 @@
           }
         });
       });
-      estado(i, '', auto ? 'Encontramos estas opciones. Toca la correcta y vuelve a tocar <b>Pedir</b>.' : '');
     }).catch(function (e) {
       if (e === 'viejo' || g !== gen[i]) return;
       buscado[i] = '';
-      estado(i, 'mal', e === 'limite' ? '<b>El buscador está ocupado.</b> Espera unos segundos y toca <b>Buscar en el mapa</b>.'
-                                     : '<b>No hay conexión con el buscador.</b> Revisa tus datos y toca <b>Buscar en el mapa</b>, o usa el GPS.');
+      estado(i, 'mal', e === 'limite' ? '<b>El buscador está ocupado.</b> Espera unos segundos y vuelve a tocar <b>Pedir</b>.'
+                                     : '<b>No hay conexión con el buscador.</b> Revisa tus datos y vuelve a tocar <b>Pedir</b>, o usa tu ubicación actual.');
     });
   }
 
@@ -958,6 +964,7 @@
 
   function val(id, c) { return $(id).querySelector('.' + c).value.trim(); }
 
+  var ubicando = false;
   $('pedir').addEventListener('click', function () {
     // Aqui se habilita el sonido: el navegador solo deja sonar despues
     // de que la persona toca algo.
@@ -975,15 +982,21 @@
     }
     // Cada punto necesita su ubicacion en el mapa. Si hay direccion escrita
     // pero aun no hay punto, se busca ya mismo (sin obligar a escribir de nuevo).
-    for (var q = 1; q <= 2; q++) {
-      if (!conf[q] || !coordOk(pts[q])) {
-        var nom = q === 1 ? 'recogida' : 'entrega';
-        err.textContent = 'Falta ubicar en el mapa la dirección de ' + nom + '. La estamos buscando: escoge la opción correcta y vuelve a tocar Pedir.';
-        enfocar(q);
-        $('f' + q).scrollIntoView({ behavior: 'smooth', block: 'center' });
-        buscarTexto(q, true);
-        return;
-      }
+    var faltan = [1, 2].filter(function (q) { return !conf[q] || !coordOk(pts[q]); });
+    if (faltan.length) {
+      if (ubicando) return;
+      ubicando = true; $('pedir').disabled = true;
+      err.textContent = 'Ubicando las direcciones en el mapa…';
+      var cad = Promise.resolve();
+      faltan.forEach(function (q) { cad = cad.then(function () { return buscarTexto(q, true); }); });
+      cad.then(function () {
+        ubicando = false; $('pedir').disabled = false;
+        var sigue = [1, 2].filter(function (q) { return !conf[q] || !coordOk(pts[q]); })[0];
+        if (!sigue) { err.textContent = ''; $('pedir').click(); return; }
+        err.textContent = 'No pudimos ubicar la dirección de ' + (sigue === 1 ? 'recogida' : 'entrega') + '. Revísala o toca Usar mi ubicación actual.';
+        enfocar(sigue); $('f' + sigue).scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+      return;
     }
     if (!pago) {
       err.textContent = 'Marca cómo vas a pagar: efectivo o Nequi.';
