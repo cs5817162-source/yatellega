@@ -290,6 +290,11 @@ begin
   new.estado := 'nuevo';
   new.motero_id := null;
   new.pago_confirmado := false;
+  -- estos datos solo los escriben las funciones del conductor (script 11)
+  new.foto_entrega := null;
+  new.lat_conductor := null;
+  new.lng_conductor := null;
+  new.pos_en := null;
   return new;
 end
 $function$;
