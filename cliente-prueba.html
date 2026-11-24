@@ -347,7 +347,7 @@
   var gen = { 1: 0, 2: 0 };                 // descarta respuestas viejas
   var meta = { 1: {}, 2: {} };              // mapaTxt, fuente, precision, calidad
   var buscado = { 1: '', 2: '' };           // ultimo texto que se busco
-  var GPS_MAX = 50;                         // metros: mas que esto no se acepta
+  var GPS_MAX = 50, GPS_APROX = 150;                         // metros: mas que esto no se acepta
 
   function coordOk(ll) {
     if (!ll) return false;
@@ -804,10 +804,26 @@
       return;
     }
     if (buscandoGps) return;
+    // Si el permiso ya esta negado el celular no vuelve a preguntar: se explica como activarlo
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'geolocation' }).then(function (st) {
+        if (st.state === 'denied') {
+          estado(i, 'mal', '<b>La ubicación está bloqueada para esta app.</b> Para activarla: toca el <b>candado</b> (o los 3 puntos) junto a la dirección de la página → <b>Permisos</b> → <b>Ubicación</b> → <b>Permitir</b>. Si instalaste la app: Ajustes del celular → Aplicaciones → Chrome → Permisos → Ubicación → Permitir. Luego vuelve a tocar <b>Usar mi ubicación actual</b>.');
+          $('gps-info').innerHTML = '';
+          return;
+        }
+        if (st.state === 'prompt') $('gps-info').innerHTML = '<b>El celular te va a preguntar si das permiso de ubicación: toca «Permitir».</b>';
+        arrancarGps(i);
+      }, function () { arrancarGps(i); });
+    } else arrancarGps(i);
+  }
+
+  function arrancarGps(i) {
+    if (buscandoGps) return;
     buscandoGps = true;
 
     var mejor = null, reloj = null, corte = null; ultimoErrGps = null;
-    $('gps-info').textContent = 'Buscando tu ubicación… dale unos segundos, el GPS tarda en enganchar.';
+    if (!/Permitir/.test($('gps-info').textContent)) $('gps-info').textContent = 'Buscando tu ubicación… dale unos segundos, el GPS tarda en enganchar.';
 
     function listo() {
       if (reloj !== null) { navigator.geolocation.clearWatch(reloj); reloj = null; }
@@ -816,8 +832,10 @@
 
       if (!mejor) {
         estado(i, 'mal', ultimoErrGps === 1
-          ? '<b>No diste permiso de ubicación.</b> Actívalo en el candado de la barra de direcciones (o en Ajustes del celular) y vuelve a tocar <b>Usar mi ubicación actual</b>.'
-          : '<b>No pudimos tomar tu ubicación.</b> Revisa que el GPS esté encendido. También puedes escribir la dirección o tocar el mapa.');
+          ? '<b>No diste permiso de ubicación.</b> Toca el <b>candado</b> junto a la dirección de la página → Permisos → Ubicación → <b>Permitir</b>, y vuelve a tocar <b>Usar mi ubicación actual</b>.'
+          : ultimoErrGps === 2
+          ? '<b>La ubicación (GPS) del celular está apagada.</b> Enciéndela en la barra de arriba del celular y vuelve a tocar <b>Usar mi ubicación actual</b>.'
+          : '<b>No pudimos tomar tu ubicación.</b> Revisa que el GPS esté encendido y vuelve a intentar, o escribe la dirección.');
         $('gps-info').innerHTML = ultimoErrGps === 1 ? '' : AYUDA_GPS.replace('<br><br>', '');
         return;
       }
@@ -831,6 +849,14 @@
           nombreDe(i, ll);
           $('gps-info').innerHTML = '';
         }
+      } else if (m <= GPS_APROX) {
+        // Bajo techo el GPS da menos precision: se toma, pero se pide revisar el punto
+        var la = L.latLng(mejor.coords.latitude, mejor.coords.longitude);
+        if (aceptar(i, la.lat, la.lng, 'gps', '<b>Ubicación tomada</b>, pero con ' + m + ' metros de margen (bajo techo el GPS es menos preciso). <b>Mira el marcador en el mapa</b>: si no está en tu puerta, arrástralo hasta ahí.', { precision: m, calidad: 'gps-aprox' })) {
+          if (map) map.setView(la, 17);
+          nombreDe(i, la);
+          $('gps-info').innerHTML = '';
+        }
       } else {
         estado(i, 'mal', 'El GPS solo dio <b>' + m + ' metros</b> de precisión: así el conductor podría llegar a otra cuadra. Toca otra vez <b>Usar mi ubicación actual</b>, o toca el mapa donde estás.');
         $('gps-info').innerHTML = '<b>El GPS no está preciso todavía.</b>' + AYUDA_GPS;
@@ -842,7 +868,11 @@
       var m = Math.round(mejor.coords.accuracy);
       if (m <= BUENA) { listo(); return; }               // ya esta bueno
       $('gps-info').innerHTML = 'Buscando… por ahora va en <b>' + m + ' metros</b>. Esperando que mejore.';
-    }, function (e) { ultimoErrGps = e && e.code; listo(); },
+    }, function (e) {
+      ultimoErrGps = e && e.code;
+      // Sin permiso se para ya; si es un error pasajero se sigue esperando el GPS
+      if (ultimoErrGps === 1 || (ultimoErrGps === 2 && !mejor)) listo();
+    },
        { enableHighAccuracy: true, maximumAge: 0, timeout: 25000 });
 
     corte = setTimeout(listo, 20000);   // 20 segundos dandole chance al GPS
@@ -858,6 +888,11 @@
     cargarTarifas();
     $('datos').innerHTML = '<b>' + esc(cli.nombre) + '</b><br>' + esc(cli.celular) + '<br>' + esc(cli.correo) + '<br>' + esc(cli.direccion) + ', ' + esc(cli.barrio) + ', ' + esc(cli.ciudad);
     cargarPedidos();
+    if (navigator.permissions && navigator.permissions.query && navigator.geolocation) {
+      navigator.permissions.query({ name: 'geolocation' }).then(function (st) {
+        if (st.state === 'granted' && !conf[1] && !campo(1, 'dir').value.trim()) miUbicacion(1);
+      }, function () {});
+    }
     setInterval(function () { if (!document.hidden) cargarPedidos(); }, 5000);
   }
 
