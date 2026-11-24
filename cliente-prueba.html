@@ -715,6 +715,74 @@
     });
   }
 
+  // ---------- Sugerencias mientras se escribe (como Wey Cali) ----------
+  // Al dejar de escribir ~0,7 s sale una lista corta de direcciones reales del mapa.
+  // Tocar una la fija de una vez. El texto del cliente no se cambia.
+  var tSug = { 1: null, 2: null }, cacheSug = {};
+  function sugerirLuego(i) {
+    clearTimeout(tSug[i]);
+    var dir = campo(i, 'dir').value.trim();
+    if (dir.length < 5 || compartida(dir) || (origen[i] && origen[i] !== 'texto')) return;
+    tSug[i] = setTimeout(function () { sugerir(i); }, 700);
+  }
+  function sugerir(i) {
+    var dir = campo(i, 'dir').value.trim(), bar = campo(i, 'bar').value.trim();
+    if (dir.length < 5 || (origen[i] && origen[i] !== 'texto')) return;
+    var p = partesDir(dir), q = (p.completa || p.texto) + (bar ? ', ' + bar : '') + ', Cali, Valle del Cauca, Colombia';
+    var g = ++gen[i];
+    opciones(i, '<div class="res-t">Buscando opciones…</div>');
+    var listo = cacheSug[q] ? Promise.resolve(cacheSug[q]) :
+      nominatim('&addressdetails=1&limit=6&viewbox=' + CALI_CAJA + '&q=' + encodeURIComponent(q), g, i).then(function (l) { cacheSug[q] = l; return l; });
+    listo.then(function (l) {
+      if (g !== gen[i]) return;
+      var ops = [];
+      l.forEach(function (x) {
+        var a = x.address || {}, o = null;
+        var zona = a.neighbourhood || a.suburb || a.city_district || '';
+        if (a.road && a.house_number) o = { nivel: 1, calidad: 'exacta', titulo: a.road + ' #' + a.house_number, zona: zona, prec: 'Exacta · con número de casa' };
+        else if (x.name && !a.road) o = { nivel: 2, calidad: 'lugar', titulo: x.name, zona: zona, prec: 'Lugar encontrado por nombre' };
+        else if (a.road) o = { nivel: 3, calidad: 'aproximada', titulo: a.road, zona: zona, prec: 'Aproximada · solo la calle, sin número' };
+        if (!o) return;
+        o.lat = +x.lat; o.lng = +x.lon;
+        if (!coordOk(o)) return;
+        if (ops.some(function (z) { return L.latLng(z.lat, z.lng).distanceTo([o.lat, o.lng]) < 40; })) return;
+        ops.push(o);
+      });
+      ops.sort(function (x, y) { return x.nivel - y.nivel; });
+      // "Solo la calle" repetida en cada barrio no ayuda: queda una, y solo si no hay mejor
+      var soloCalle = ops.filter(function (o) { return o.nivel === 3; });
+      ops = ops.filter(function (o) { return o.nivel < 3; });
+      if (!ops.length && !(p.via && p.cruce) && soloCalle.length) ops.push(soloCalle[0]);
+      ops = ops.slice(0, 4);
+      var h = ops.length ? '<div class="res-t">¿Es alguna de estas? Toca la tuya:</div>' : '<div class="res-t">El mapa no tiene esa dirección con número.</div>';
+      h += ops.map(function (o, k) {
+        return '<button type="button" class="op" data-s="' + k + '"><b>' + esc(o.titulo) + '</b><small>' + esc((o.zona ? o.zona + ', ' : '') + 'Cali') +
+               '</small><small class="' + (o.nivel === 1 ? 'p-ok' : 'p-ap') + '">' + esc(o.prec) + '</small></button>';
+      }).join('');
+      if (p.via && p.cruce) h += '<button type="button" class="op" data-s="esq"><b>Ubicarla por el cruce de las calles</b><small>Calcula la esquina de ' + esc(p.via) + ' con ' + esc(p.cruce) + ' (tarda unos 5 s)</small></button>';
+      h += '<button type="button" class="op" data-s="mapa"><b>📍 Fijar un punto en el mapa</b><small>Toca en el mapa donde queda</small></button>';
+      opciones(i, h);
+      $('f' + i).querySelectorAll('.sug .op').forEach(function (b) {
+        // pointerdown: se actua antes de que el campo pierda el foco
+        b.addEventListener('pointerdown', function (e) {
+          e.preventDefault();
+          var s = b.dataset.s;
+          if (s === 'mapa') { enfocar(i); opciones(i, ''); estado(i, '', 'Toca en el mapa el sitio exacto.'); if (map) map.invalidateSize(); return; }
+          if (s === 'esq') { buscado[i] = ''; buscarTexto(i, true); return; }
+          var o = ops[+s];
+          if (aceptar(i, o.lat, o.lng, 'texto', o.nivel === 1 ? '<b>Dirección escogida de la lista.</b> Revisa que el marcador esté bien.' :
+              '<b>Punto aproximado.</b> Si no quedó en la puerta, <b>arrastra el marcador</b> en el mapa.', { calidad: o.calidad, mapaTxt: o.titulo })) {
+            buscado[i] = dir + '|' + bar;
+            if (map) map.setView([o.lat, o.lng], 17);
+          }
+        });
+      });
+    }).catch(function (e) {
+      if (e === 'viejo' || g !== gen[i]) return;
+      opciones(i, '');
+    });
+  }
+
   // ---------------- Mapa ----------------
   function iniciarMapa() {
     if (map) { map.invalidateSize(); return; }
@@ -957,6 +1025,7 @@
         // Si pegaron un enlace de ubicacion en la direccion, se usa de una
         var c = inp === dirInp ? compartida(dirInp.value) : null;
         if (c) { dirInp.value = ''; usarCompartida(n, c); }
+        else sugerirLuego(n);
       });
       // Al terminar de escribir o pegar, se busca sola
       inp.addEventListener('blur', function () { setTimeout(function () { if (!conf[n]) buscarTexto(n); }, 200); });
