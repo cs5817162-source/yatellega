@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ya te llega - Pedir moto</title><link rel="icon" type="image/png" href="icon-cliente-192.png"><link rel="apple-touch-icon" href="icon-cliente-512.png"><link rel="manifest" href="manifest-cliente.webmanifest"><meta name="theme-color" content="#E8590C">
+<link rel="stylesheet" href="ytl.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+  :root { --n:#E8590C; --g:#1F2937; --c:#FFF6E5; --b:#D1D5DB; --m:#5F5E5A; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; }
+  body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--g); background:#EDEAE0; }
+  .app { max-width:460px; margin:0 auto; min-height:100vh; background:#fff; position:relative; display:flex; flex-direction:column; }
+  .mapa { position:relative; height:220px; background:#EDEAE0; flex:none; }
+  #mapa { position:absolute; inset:0; z-index:0; }
+  .marca { width:18px; height:18px; border-radius:50%; border:3px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.45); }
+  .ayuda { position:absolute; z-index:500; left:50%; bottom:10px; transform:translateX(-50%); background:#111827; color:#fff; border-radius:999px; padding:8px 16px; font-size:13px; font-weight:600; white-space:nowrap; }
+  .miub { border:0; background:transparent; color:var(--n); font-weight:700; font-size:13px; cursor:pointer; font-family:inherit; flex:none; padding:8px 0 0; }
+  .gps-info { font-size:13px; color:var(--m); line-height:1.45; margin-top:8px; }
+  .geo { margin-top:6px; }
+  .geo .bus { width:100%; border:1.5px solid var(--n); color:var(--n); background:#fff; border-radius:10px; padding:8px 10px; font-weight:700; font-size:14px; font-family:inherit; cursor:pointer; }
+  .geo .bus:disabled { opacity:.6; cursor:wait; }
+  .geo .res-t { font-size:13px; color:var(--m); margin-top:8px; }
+  .geo .op { display:block; width:100%; text-align:left; border:1px solid #E5E7EB; background:#fff; border-radius:10px; padding:8px 10px; margin-top:6px; font-family:inherit; cursor:pointer; }
+  .geo .op.sel { border:2px solid var(--n); background:var(--c); }
+  .geo .op b { display:block; font-size:14px; color:var(--g); }
+  .geo .op small { display:block; font-size:12px; margin-top:2px; }
+  .geo .prec-ok { color:#166534; } .geo .prec-ap { color:#92400E; }
+  .geo .conf { width:100%; margin-top:8px; background:var(--n); color:#fff; border:0; border-radius:10px; padding:10px; font-weight:700; font-size:15px; font-family:inherit; cursor:pointer; }
+  .geo .est { font-size:13px; line-height:1.4; margin-top:6px; color:var(--m); }
+  .geo .est.ok { color:#166534; } .geo .est.pend { color:#92400E; } .geo .est.mal { color:#B91C1C; }
+  .gps-info b { color:var(--g); }
+  .km { margin-top:12px; background:var(--c); border:1px solid var(--n); border-radius:12px; padding:10px 12px; font-size:14px; line-height:1.5; }
+  /* Seguir la moto mientras viene */
+  #mapa-seg { height:250px; border-radius:16px; overflow:hidden; border:1px solid #E5E7EB; }
+  .seg-est { background:var(--c); border:1px solid var(--n); border-radius:12px; padding:11px 13px; font-size:15px; line-height:1.5; margin:8px 0 14px; }
+  .ped .vfoto { margin-top:8px; border:1.5px solid var(--n); color:var(--n); background:#fff; border-radius:10px; padding:8px 12px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .fent img { width:100%; border-radius:12px; margin-top:8px; display:block; }
+  .moto-viva { width:38px; height:38px; border-radius:50%; background:var(--n); border:3px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; }
+  .moto-viva svg { width:22px; height:22px; }
+  .cab { position:absolute; z-index:500; top:10px; left:10px; right:10px; background:#fff; border-radius:14px; padding:8px 12px; display:flex; align-items:center; gap:10px; box-shadow:0 1px 4px rgba(0,0,0,.12); }
+  .cab .pin { width:40px; height:40px; border-radius:50%; flex:none; display:block; object-fit:cover; }
+  .cab b { font-size:15px; font-weight:600; display:block; }
+  .cab small { font-size:12px; color:var(--m); }
+  .hoja { flex:1; margin-top:-16px; background:#fff; border-radius:20px 20px 0 0; padding:12px 16px 90px; position:relative; }
+  .asa { width:36px; height:4px; background:#D3D1C7; border-radius:2px; margin:0 auto 12px; }
+  h1 { font-size:19px; font-weight:600; margin:0 0 10px; }
+  .chips { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; }
+  .chip { white-space:nowrap; padding:9px 14px; border-radius:999px; border:0; background:#F1EFE8; color:var(--g); font-size:14px; cursor:pointer; font-family:inherit; }
+  .chip.sel { background:var(--n); color:#fff; }
+  .dirs { background:#F1EFE8; border-radius:14px; padding:6px; margin-top:12px; }
+  .fila { background:#fff; border:1px solid transparent; border-radius:12px; padding:8px 12px; margin-bottom:4px; display:flex; gap:10px; align-items:flex-start; }
+  .fila.f { border:2px solid var(--n); }
+  .pt { width:10px; height:10px; border-radius:50%; margin-top:14px; flex:none; }
+  .fila input { width:100%; border:0; outline:0; font-size:15px; padding:6px 0; background:transparent; color:var(--g); font-family:inherit; }
+  .fila input + input { border-top:1px solid #EEE; font-size:14px; }
+  .pago { margin-top:14px; }
+  .pago p { margin:0 0 2px; font-size:14px; font-weight:600; }
+  .cas { display:inline-flex; align-items:center; gap:8px; padding:8px 22px 8px 0; font-size:15px; cursor:pointer; }
+  .caja { width:22px; height:22px; border:2px solid var(--g); border-radius:4px; background:#fff; color:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; line-height:1; }
+  .cas.sel .caja { background:var(--n); border-color:var(--n); }
+  .btn { width:100%; margin-top:10px; border:0; border-radius:14px; background:var(--n); color:#fff; padding:15px 16px; font-size:16px; font-weight:600; display:flex; justify-content:space-between; cursor:pointer; font-family:inherit; }
+  .btn:disabled { opacity:.6; }
+  .err { color:#A32D2D; font-size:14px; min-height:20px; margin-top:8px; }
+  .ok { display:none; margin-top:10px; background:var(--c); border:1px solid var(--n); border-radius:12px; padding:12px; font-size:14px; line-height:1.5; }
+  .nota { font-size:12px; color:var(--m); text-align:center; margin-top:14px; }
+  .pag { display:none; }
+  .pag.on { display:block; }
+  .ped { background:#F1EFE8; border-radius:12px; padding:12px; margin-bottom:8px; font-size:14px; line-height:1.5; }
+  .ped .est { display:inline-block; font-size:12px; font-weight:700; padding:3px 10px; border-radius:999px; background:var(--c); color:var(--n); margin-bottom:4px; }
+  .ped .est.v { background:#EAF3DE; color:#27500A; } .ped .est.r { background:#FCEBEB; color:#791F1F; }
+  .ped .cod { margin-top:6px; background:#fff; border:2px dashed var(--n); border-radius:10px; padding:8px; text-align:center; font-size:14px; }
+  .ped .cod b { display:block; font-size:28px; letter-spacing:6px; }
+  .ped button { margin-top:8px; border:1.5px solid #B91C1C; color:#B91C1C; background:#fff; border-radius:10px; padding:8px 12px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .vacio { color:var(--m); font-size:14px; padding:20px 0; text-align:center; }
+  nav { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:460px; background:#fff; border-top:1px solid #E5E7EB; display:flex; justify-content:space-around; padding:6px 0 10px; }
+  nav button { border:0; background:transparent; color:var(--m); font-size:12px; padding:6px 18px; border-radius:12px; cursor:pointer; font-family:inherit; display:flex; flex-direction:column; align-items:center; gap:2px; }
+  nav button.on { background:var(--c); color:var(--n); }
+  nav svg { width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  #reg { display:none; padding:16px 16px 40px; }
+  #reg h1 { font-size:22px; font-weight:700; margin:0 0 4px; }
+  #reg .sub { font-size:14px; color:#6B7280; margin:0 0 14px; }
+  #reg .sec { background:var(--c); border-radius:16px; padding:14px; margin-bottom:12px; }
+  #reg .sec h2 { font-size:16px; margin:0 0 4px; font-weight:700; }
+  #reg label { display:block; font-size:14px; font-weight:600; margin:10px 0 4px; }
+  #reg input[type=text], #reg input[type=tel], #reg input[type=email] { width:100%; border:1.5px solid #D1D5DB; border-radius:12px; padding:12px; font-size:16px; background:#fff; color:var(--g); font-family:inherit; }
+  #reg .cas { display:flex; align-items:flex-start; gap:10px; padding:8px 0; font-size:14px; line-height:1.35; }
+  #reg .caja { flex:none; }
+  #reg .btn2 { width:100%; border:0; border-radius:16px; background:var(--n); color:#fff; padding:17px; font-size:18px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:6px; }
+  #reg .btn2:disabled { opacity:.6; }
+  #reg .err { color:#B91C1C; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div id="auth" style="display:none"></div>
+  <div id="cargando" class="carga">Cargando…</div>
+
+  <div id="reg">
+    <img src="logo.png" alt="Ya te llega" width="96" height="96" style="display:block;margin:4px auto 10px"><h1 style="text-align:center">Crea tu cuenta</h1>
+    <p class="sub">Para pedir tu moto te registras una sola vez.</p>
+    <div id="aviso-correo" style="background:#FFF6E5;border:2px solid #E8590C;border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:14px;line-height:1.5"></div>
+    <div class="sec">
+      <h2>Tus datos</h2>
+      <label for="nombre">Nombre completo</label>
+      <input type="text" id="nombre" autocomplete="name" placeholder="Ej. María Gómez">
+      <label for="cel">Celular (WhatsApp)</label>
+      <input type="tel" id="cel" inputmode="numeric" autocomplete="tel" placeholder="3001234567">
+      <label for="correo">Correo</label>
+      <input type="email" id="correo" autocomplete="email" placeholder="nombre@correo.com">
+    </div>
+    <div class="sec">
+      <h2>Dónde vives</h2>
+      <label for="dir">Dirección de residencia</label>
+      <input type="text" id="dir" autocomplete="street-address" placeholder="Ej. Cra 5 # 10-20, apto 301">
+      <label for="barrio">Barrio</label>
+      <input type="text" id="barrio" placeholder="Ej. Granada">
+      <label for="ciudad">Ciudad</label>
+      <input type="text" id="ciudad" value="Cali">
+    </div>
+    <div class="cas" id="acepto" role="checkbox" aria-checked="false" tabindex="0"><span class="caja"></span><span>Acepto los términos y que usen mis datos personales, según la ley de Colombia.</span></div>
+    <button class="btn2" id="crear" type="button">Crear mi cuenta</button>
+    <div class="err" id="rerr" role="alert"></div>
+    <p style="text-align:center"><button class="salir" type="button" onclick="salir()">Cerrar sesión</button></p>
+  </div>
+
+  <div id="main" style="display:none">
+    <div class="mapa">
+      <div id="mapa"></div>
+      <div class="ayuda" id="ayuda">Toca el mapa: dónde recogemos</div>
+      <div class="cab">
+        <img class="pin" src="logo.png" alt="Ya te llega" width="40" height="40">
+        <div><b>Ya te llega</b><small>Moto en Cali, 7 a. m. a 10 p. m.</small></div>
+      </div>
+    </div>
+
+    <div class="hoja">
+      <div class="asa"></div>
+
+      <div class="pag on" id="p-pedir">
+        <h1>¿Qué llevamos hoy?</h1>
+        <div class="chips" id="chips">
+          <button class="chip sel" type="button">Mandado</button>
+          <button class="chip" type="button">Medicamentos</button>
+          <button class="chip" type="button">Comida</button>
+          <button class="chip" type="button">Productos</button>
+        </div>
+
+        <div class="dirs">
+          <div class="fila f" id="f1">
+            <span class="pt" style="background:var(--n)"></span>
+            <div style="flex:1">
+              <input type="text" class="dir" placeholder="¿Dónde lo recogemos? Ej. Cra 5 # 10-20" autocomplete="off">
+              <input type="text" class="bar" placeholder="Barrio, ej. Granada" autocomplete="off">
+              <input type="text" class="ref" placeholder="Referencia: casa, color del portón, qué hay al lado" autocomplete="off">
+              <div class="geo" data-i="1"><button type="button" class="bus">Buscar dirección</button><div class="res"></div><div class="est"></div><button type="button" class="conf" style="display:none">Confirmar ubicación</button></div>
+            </div>
+            <button class="miub" data-i="1" type="button">Mi ubicación</button>
+          </div>
+          <div class="fila" id="f2">
+            <span class="pt" style="background:var(--g)"></span>
+            <div style="flex:1">
+              <input type="text" class="dir" placeholder="¿Dónde lo entregamos? Ej. Calle 5 # 38-10" autocomplete="off">
+              <input type="text" class="bar" placeholder="Barrio, ej. San Fernando" autocomplete="off">
+              <input type="text" class="ref" placeholder="Referencia: casa, color del portón, qué hay al lado" autocomplete="off">
+              <div class="geo" data-i="2"><button type="button" class="bus">Buscar dirección</button><div class="res"></div><div class="est"></div><button type="button" class="conf" style="display:none">Confirmar ubicación</button></div>
+            </div>
+            <button class="miub" data-i="2" type="button">Mi ubicación</button>
+          </div>
+        </div>
+
+        <div class="gps-info" id="gps-info"></div>
+
+        <div class="pago">
+          <p>¿Cómo vas a pagar?</p>
+          <span class="cas" data-p="efectivo" role="checkbox" aria-checked="false" tabindex="0"><span class="caja"></span>Efectivo</span>
+          <span class="cas" data-p="nequi" role="checkbox" aria-checked="false" tabindex="0"><span class="caja"></span>Nequi</span>
+        </div>
+
+        <div class="km" id="km">Marca en el mapa dónde recogemos y dónde entregamos para ver el precio.</div>
+        <button class="btn" id="pedir" type="button"><span>Pedir moto ahora</span><span id="precio-b">desde $5.000</span></button>
+        <div class="err" id="err" role="alert"></div>
+        <div class="ok" id="ok"></div>
+        <p class="nota">El precio depende de la distancia. Versión de prueba.</p>
+      </div>
+
+      <div class="pag" id="p-pedidos">
+        <h1>Mis pedidos</h1>
+        <div id="seg" style="display:none">
+          <div id="mapa-seg"></div>
+          <div class="seg-est" id="seg-est"></div>
+        </div>
+        <div id="lista"><div class="vacio">Todavía no tienes pedidos.</div></div>
+      </div>
+
+      <div class="pag" id="p-cuenta">
+        <h1>Cuenta</h1>
+        <div class="ped" id="datos"></div>
+        <p style="text-align:center"><button class="salir" type="button" onclick="salir()">Cerrar sesión</button></p>
+      </div>
+    </div>
+
+    <nav>
+      <button class="on" data-t="pedir" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>Pedir</button>
+      <button data-t="pedidos" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg>Mis pedidos</button>
+      <button data-t="cuenta" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Cuenta</button>
+    </nav>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="ytl.js"></script>
+<script>
+(function () {
+  // ---------------------------------------------------------------
+  // TARIFA
+  // Los precios de verdad viven en la tabla "tarifas" de Supabase, y el
+  // servidor es quien pone el precio de cada pedido. Para cambiarlos:
+  // Supabase -> Table Editor -> tarifas -> editar la fila.
+  //
+  // Los numeros de aqui abajo son solo el respaldo: sirven para mostrar
+  // algo mientras cargan los de verdad, o si se cae la conexion.
+  // ---------------------------------------------------------------
+  var TRAMOS = [[3, 8000], [5, 9500], [7, 11500], [10, 14000]];  // [hasta cuantos km, precio]
+  var MARGEN = 1800;           // lo que le queda a Ya te llega por pedido
+  var KM_EXTRA = 1200;         // cada km que pasa del ultimo tramo
+  var MAX_KM = 40;             // tope de seguridad: mas de esto si se cotiza aparte
+  var FACTOR_RUTA = 1.3;       // las motos no van en linea recta
+
+  function cargarTarifas() {
+    sb.from('tarifas').select('*').eq('id', 1).maybeSingle().then(function (r) {
+      if (r.error || !r.data) return;   // se queda con los numeros de respaldo
+      var t = r.data;
+      if (Array.isArray(t.tramos) && t.tramos.length) TRAMOS = t.tramos;
+      if (t.margen_cop !== null && t.margen_cop !== undefined) MARGEN = t.margen_cop;
+      if (t.max_km) MAX_KM = t.max_km;
+      if (t.km_extra_cop) KM_EXTRA = t.km_extra_cop;
+      FACTOR_RUTA = Number(t.factor_ruta);
+      calcular();
+    });
+  }
+
+  var CALI = [3.4516, -76.532];
+  var map = null, puntoActivo = 1, pts = { 1: null, 2: null }, marcas = { 1: null, 2: null };
+  var COLOR_PT = { 1: '#E8590C', 2: '#111827' };
+
+  var user = null, cli = null, pago = null, servicio = 'Mandado', enviando = false;
+  var SERV = { 'Mandado': 'paquete', 'Medicamentos': 'medicamentos', 'Comida': 'comida', 'Productos': 'productos' };
+  var SNOM = { paquete: 'Mandado', medicamentos: 'Medicamentos', comida: 'Comida', productos: 'Productos' };
+  var ETQ = { nuevo: 'Buscando moto', aceptado: 'Moto asignada', en_camino: 'La moto va a recoger', en_recogida: 'La moto llegó a recoger', recogido: 'Pedido recogido', en_entrega: 'La moto va a entregar', entregado: 'Entregado', cancelado: 'Cancelado' };
+
+  entrar($('auth'), '<span style="color:#E8590C">Ya</span>Te<span style="color:#E8590C">Llega</span> · Pedir moto', function (u) {
+    user = u;
+    $('cargando').style.display = 'block';
+    cargarCliente();
+  });
+  setTimeout(function () { if ($('auth').style.display === 'block') $('cargando').style.display = 'none'; }, 800);
+
+  function cargarCliente() {
+    $('auth').style.display = 'none';
+    sb.from('clientes').select('*').eq('user_id', user.id).maybeSingle().then(function (r) {
+      $('cargando').style.display = 'none';
+      if (r.error) { $('cargando').style.display = 'block'; $('cargando').textContent = errMsg(r.error); return; }
+      if (r.data) { cli = r.data; iniciar(); }
+      else {
+        $('reg').style.display = 'block';
+        $('correo').value = user.email || '';
+        $('aviso-correo').innerHTML =
+          'Entraste con <b>' + esc(user.email || '') + '</b>.<br>' +
+          'Con este correo todavía no tienes cuenta de cliente.<br>' +
+          'Si ya te habías registrado, fue con otro correo: sal y entra con ese, ' +
+          'y vas directo a pedir sin volver a llenar nada.' +
+          '<button type="button" id="otro-correo" style="display:block;width:100%;margin-top:12px;' +
+          'border:1.5px solid #E8590C;background:#fff;color:#E8590C;border-radius:12px;padding:12px;' +
+          'font-size:16px;font-weight:700;cursor:pointer;font-family:inherit">Entrar con otro correo</button>';
+        $('otro-correo').onclick = salir;
+      }
+    });
+  }
+
+  var acepto = false;
+  casilla($('acepto'), function (s) { acepto = s; $('rerr').textContent = ''; });
+  function v(i) { return $(i).value.trim(); }
+  $('crear').addEventListener('click', function () {
+    var e = $('rerr');
+    if (v('nombre').length < 5) { e.textContent = 'Escribe tu nombre completo.'; return; }
+    if (!/^3\d{9}$/.test(v('cel'))) { e.textContent = 'El celular tiene 10 números y empieza por 3.'; return; }
+    if (!/^\S+@\S+\.\S+$/.test(v('correo'))) { e.textContent = 'Escribe un correo válido.'; return; }
+    if (v('dir').length < 5) { e.textContent = 'Escribe tu dirección de residencia.'; return; }
+    if (v('barrio').length < 3) { e.textContent = 'Escribe tu barrio.'; return; }
+    if (v('ciudad').length < 3) { e.textContent = 'Escribe tu ciudad.'; return; }
+    if (!acepto) { e.textContent = 'Marca que aceptas los términos y el uso de tus datos.'; return; }
+    e.textContent = 'Guardando…'; $('crear').disabled = true;
+    sb.from('clientes').insert({ user_id: user.id, nombre: v('nombre'), celular: v('cel'), correo: v('correo'), direccion: v('dir'), barrio: v('barrio'), ciudad: v('ciudad'), acepto_terminos: true }).select().single().then(function (r) {
+      $('crear').disabled = false;
+      if (r.error) { e.textContent = errMsg(r.error); return; }
+      cli = r.data; $('reg').style.display = 'none'; iniciar();
+    });
+  });
+
+  // ------------- Direcciones: del mapa al texto y al reves -------------
+  // Usamos el buscador de OpenStreetMap, que es gratis y no necesita clave.
+  var CALI_CAJA = '-76.62,3.53,-76.44,3.33';   // la zona donde buscamos
+
+  function campo(i, clase) { return $('f' + i).querySelector('.' + clase); }
+
+  // La calle que cruza. En Cali uno se ubica por el cruce ("la 41D2 con
+  // la 55B"), no por el numero de la casa, que casi nunca esta en los
+  // mapas. Esto pregunta que calles hay a 90 metros a la redonda.
+  function calleCruzada(ll, principal) {
+    var q = '[out:json][timeout:20];way(around:90,' + ll.lat + ',' + ll.lng + ')[highway][name];out tags;';
+    return fetch('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q))
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        var nombres = [];
+        (j.elements || []).forEach(function (e) {
+          var n = e.tags && e.tags.name;
+          if (n && n !== principal && nombres.indexOf(n) < 0) nombres.push(n);
+        });
+        // Si la principal es carrera, buscamos una calle, y al reves
+        var esCarrera = /carrera|cra|kr/i.test(principal || '');
+        var cruce = nombres.filter(function (n) {
+          return esCarrera ? /^calle|^cl\b|^diagonal/i.test(n) : /^carrera|^cra|^kr|^transversal/i.test(n);
+        })[0];
+        return cruce || nombres[0] || null;
+      })
+      .catch(function () { return null; });
+  }
+
+  // De unas coordenadas a una direccion escrita
+  function buscarDireccion(i, ll) {
+    var u = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18' +
+            '&accept-language=es&lat=' + ll.lat + '&lon=' + ll.lng;
+    fetch(u).then(function (r) { return r.json(); }).then(function (d) {
+      var a = (d && d.address) || {};
+      var via = [a.road, a.house_number].filter(Boolean).join(' # ');
+      var barrio = a.neighbourhood || a.suburb || a.quarter || a.city_district || '';
+      var dir = campo(i, 'dir'), bar = campo(i, 'bar');
+      if (via && !dir.dataset.escrito) dir.value = via;
+      else if (!dir.value.trim()) dir.value = via || 'Punto marcado en el mapa';
+      if (barrio && !bar.value.trim()) bar.value = barrio;
+
+      // Si no vino el numero de la casa, al menos decimos con que cruza
+      if (a.road && !a.house_number && !dir.dataset.escrito) {
+        calleCruzada(ll, a.road).then(function (cruce) {
+          if (cruce && !dir.dataset.escrito && dir.value.indexOf(' con ') < 0) {
+            dir.value = a.road + ' con ' + cruce;
+          }
+        });
+      }
+    }).catch(function () {
+      var dir = campo(i, 'dir');
+      if (!dir.value.trim()) dir.value = 'Punto marcado en el mapa';
+    });
+  }
+
+  // ================= Direcciones: buscar, escoger y CONFIRMAR =================
+  // Regla de oro: el pedido solo usa un punto que el cliente CONFIRMO.
+  // Si cambia la direccion, busca de nuevo o mueve el pin, la confirmacion
+  // se pierde y el boton de pedir no deja seguir hasta confirmar otra vez.
+  //
+  // Buscador: Nominatim (OpenStreetMap). Politica de uso: maximo 1 consulta
+  // por segundo y nada de autocompletar al teclear. Por eso solo se busca
+  // cuando el cliente toca "Buscar dirección", y las consultas van en fila
+  // con 1,1 s de pausa.
+  var conf = { 1: false, 2: false };      // ubicacion confirmada por el cliente
+  var gen = { 1: 0, 2: 0 };               // numero de busqueda: descarta respuestas viejas
+  var CALI_BOX = '-76.62,3.56,-76.44,3.30';
+  var NOMI = 'https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=co&accept-language=es&bounded=1';
+  var ultimaConsulta = 0;
+
+  function geo(i) { return $('f' + i).querySelector('.geo'); }
+
+  function coordOk(ll) {
+    if (!ll) return false;
+    var la = Number(ll.lat), lo = Number(ll.lng);
+    if (!isFinite(la) || !isFinite(lo)) return false;
+    if (la < -90 || la > 90 || lo < -180 || lo > 180) return false;
+    // Zona de servicio amplia: Cali con Jamundi y Yumbo
+    return la > 3.15 && la < 3.65 && lo > -76.8 && lo < -76.3;
+  }
+
+  function estado(i, clase, html) {
+    var e = geo(i).querySelector('.est');
+    e.className = 'est' + (clase ? ' ' + clase : '');
+    e.innerHTML = html || '';
+  }
+
+  // Muestra el boton Confirmar y el aviso, segun como este el punto
+  function pintarConf(i) {
+    var b = geo(i).querySelector('.conf');
+    if (conf[i]) {
+      b.style.display = 'none';
+      estado(i, 'ok', '✓ <b>Ubicación confirmada.</b> Si cambias la dirección o mueves el punto, tendrás que confirmar otra vez.');
+    } else if (pts[i]) {
+      b.style.display = 'block';
+      estado(i, 'pend', 'Revisa que el punto quedó en la puerta. Si no, <b>arrástralo en el mapa</b>. Luego toca <b>Confirmar ubicación</b>.');
+    } else {
+      b.style.display = 'none';
+    }
+    var t = $('f' + i).querySelector('.pt');
+    if (t) t.style.boxShadow = conf[i] ? '0 0 0 3px #BBF7D0' : '';
+  }
+
+  function desconfirmar(i) {
+    conf[i] = false;
+    pintarConf(i);
+  }
+
+  function confirmar(i) {
+    if (!coordOk(pts[i])) {
+      estado(i, 'mal', 'Ese punto no es válido o queda fuera de la zona de servicio. Marca el sitio en el mapa.');
+      return;
+    }
+    conf[i] = true;
+    pintarConf(i);
+    var otro = i === 1 ? 2 : 1;
+    if (!conf[otro]) enfocar(otro);
+    calcular();
+    $('err').textContent = '';
+  }
+
+  // ---------- Direcciones colombianas ----------
+  function sinTildes(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+
+  // "cra 70 no 9 - 81" -> "Carrera 70 # 9-81"
+  function normalizarDir(s) {
+    var t = ' ' + sinTildes(s).toLowerCase().replace(/\s+/g, ' ').trim() + ' ';
+    t = t.replace(/ (carrera|carrea|carera|cra|cr|kra|kr|k|cra\.|cr\.|kr\.)\.? ?(?=\d)/g, ' Carrera ')
+         .replace(/ (calle|cll|cl|clle)\.? ?(?=\d)/g, ' Calle ')
+         .replace(/ (avenida|avda|av)\.? ?(?=\d)/g, ' Avenida ')
+         .replace(/ (diagonal|diag|dg)\.? ?(?=\d)/g, ' Diagonal ')
+         .replace(/ (transversal|transv|trans|tv|tr)\.? ?(?=\d)/g, ' Transversal ')
+         .replace(/ (numero|num|no\.?|nro\.?|n°|nº|n\.)\s*(?=\d)/g, ' # ')
+         .replace(/\s*#\s*/g, ' # ')
+         .replace(/\s*-\s*/g, '-')
+         .replace(/(\d) ?([a-z])(?=\d|\s|-|#|$)/g, function (m, d, l) { return d + l.toUpperCase(); })
+         .replace(/# (\d+[A-Z]?\d?) (\d+)\b/, '# $1-$2');     // "# 9 81" es "# 9-81"
+    return t.replace(/\s+/g, ' ').trim();
+  }
+
+  // Saca: via principal, numero, calle que cruza y metros desde la esquina
+  function partesDir(s) {
+    var t = normalizarDir(s);
+    var N = '(\\d+(?: ?[A-Z](?: ?\\d)?)?(?: ?bis)?)', SUF = '(?: (oeste|norte|sur|este))?';
+    var TIPOS = '(Carrera|Calle|Avenida|Diagonal|Transversal)';
+    function numero(x) { return x.replace(/\s+/g, '').replace(/bis$/i, ' Bis'); }
+    function sufijo(x) { return x ? ' ' + x.charAt(0).toUpperCase() + x.slice(1).toLowerCase() : ''; }
+    function cruceDe(tipo) { return /Carrera|Transversal/.test(tipo) ? 'Calle' : (/Calle|Diagonal/.test(tipo) ? 'Carrera' : null); }
+    // "Carrera 46 con Calle 54": una esquina
+    var c = t.match(new RegExp('^' + TIPOS + ' ' + N + SUF + ' con ' + TIPOS + ' ' + N + SUF, 'i'));
+    if (c) {
+      return { texto: t, via: c[1] + ' ' + numero(c[2]) + sufijo(c[3]), cruce: c[4] + ' ' + numero(c[5]) + sufijo(c[6]), metros: null, esquina: true };
+    }
+    // "Carrera 70 # 9-81": sobre la Carrera 70, a 81 m de la Calle 9
+    var m = t.match(new RegExp('^' + TIPOS + ' ' + N + SUF + ' # ?' + N + SUF + '(?:-(\\d+))?', 'i'));
+    if (!m) {
+      var v = t.match(new RegExp('^' + TIPOS + ' ' + N + SUF, 'i'));
+      return v ? { via: v[1] + ' ' + numero(v[2]) + sufijo(v[3]), texto: t } : { texto: t };
+    }
+    var via = m[1] + ' ' + numero(m[2]) + sufijo(m[3]), tc = cruceDe(m[1]);
+    return {
+      texto: t,
+      via: via,
+      cruce: tc ? tc + ' ' + numero(m[4]) + sufijo(m[5]) : null,
+      metros: m[6] ? parseInt(m[6], 10) : null,
+      completa: via + ' # ' + numero(m[4]) + (m[6] ? '-' + m[6] : '')
+    };
+  }
+
+  // Para comparar nombres de calles sin que importen tildes, espacios ni mayusculas
+  function clave(n) { return sinTildes(n).toLowerCase().replace(/\s+/g, ''); }
+
+  // ---------- Consultas al buscador, respetando 1 por segundo ----------
+  function esperarTurno() {
+    var falta = ultimaConsulta + 1100 - Date.now();
+    return new Promise(function (r) { setTimeout(r, Math.max(0, falta)); });
+  }
+  function nominatim(params, g, i) {
+    return esperarTurno().then(function () {
+      if (g !== gen[i]) throw 'viejo';
+      ultimaConsulta = Date.now();
+      var ctl = window.AbortController ? new AbortController() : null;
+      var reloj = setTimeout(function () { if (ctl) ctl.abort(); }, 12000);
+      return fetch(NOMI + params, ctl ? { signal: ctl.signal } : undefined).then(function (r) {
+        clearTimeout(reloj);
+        if (r.status === 429) throw 'limite';
+        if (!r.ok) throw 'http';
+        return r.json();
+      }, function (e) { clearTimeout(reloj); throw 'red'; });
+    }).then(function (j) {
+      if (g !== gen[i]) throw 'viejo';        // llego tarde: hay una busqueda mas nueva
+      return Array.isArray(j) ? j : [];
+    });
+  }
+
+  // ---------- Geometria: donde se cruzan dos calles ----------
+  function lineas(res) {
+    var L = [];
+    res.forEach(function (x) {
+      var g = x.geojson; if (!g) return;
+      if (g.type === 'LineString') L.push(g.coordinates);
+      else if (g.type === 'MultiLineString') g.coordinates.forEach(function (c) { L.push(c); });
+    });
+    return L;
+  }
+  // Distancia minima entre dos tramos (en metros) y el punto medio entre ellos
+  function cercaTramos(a1, a2, b1, b2, lat0) {
+    var kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 110540;
+    function P(c) { return [c[0] * kx, c[1] * ky]; }
+    var p1 = P(a1), p2 = P(a2), q1 = P(b1), q2 = P(b2);
+    function proy(p, s1, s2) {
+      var dx = s2[0] - s1[0], dy = s2[1] - s1[1], L2 = dx * dx + dy * dy;
+      var t = L2 ? Math.max(0, Math.min(1, ((p[0] - s1[0]) * dx + (p[1] - s1[1]) * dy) / L2)) : 0;
+      return [s1[0] + t * dx, s1[1] + t * dy];
+    }
+    var d = (p1[0] - p2[0]) * (q1[1] - q2[1]) - (p1[1] - p2[1]) * (q1[0] - q2[0]);
+    if (Math.abs(d) > 1e-9) {
+      var t = ((p1[0] - q1[0]) * (q1[1] - q2[1]) - (p1[1] - q1[1]) * (q1[0] - q2[0])) / d;
+      var u = -((p1[0] - p2[0]) * (p1[1] - q1[1]) - (p1[1] - p2[1]) * (p1[0] - q1[0])) / d;
+      if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+        var x = [p1[0] + t * (p2[0] - p1[0]), p1[1] + t * (p2[1] - p1[1])];
+        return { d: 0, lng: x[0] / kx, lat: x[1] / ky };
+      }
+    }
+    var mejor = null;
+    [[p1, q1, q2], [p2, q1, q2], [q1, p1, p2], [q2, p1, p2]].forEach(function (c) {
+      var r = proy(c[0], c[1], c[2]), dd = Math.hypot(c[0][0] - r[0], c[0][1] - r[1]);
+      if (!mejor || dd < mejor.d) mejor = { d: dd, lng: (c[0][0] + r[0]) / 2 / kx, lat: (c[0][1] + r[1]) / 2 / ky };
+    });
+    return mejor;
+  }
+  function cruces(A, B, lat0) {
+    var la = lineas(A), lb = lineas(B), out = [];
+    la.forEach(function (p) { for (var i = 0; i < p.length - 1; i++) {
+      lb.forEach(function (q) { for (var j = 0; j < q.length - 1; j++) {
+        var c = cercaTramos(p[i], p[i + 1], q[j], q[j + 1], lat0);
+        if (c && c.d <= 25) out.push(c);
+      } });
+    } });
+    // Una misma esquina puede salir varias veces (vias de doble calzada,
+    // tramos cortados). Lo que este a menos de 150 m es la misma esquina:
+    // se promedia en un solo punto.
+    var grupos = [];
+    out.forEach(function (c) {
+      var g = grupos.filter(function (x) { return L.latLng(x.lat, x.lng).distanceTo([c.lat, c.lng]) < 150; })[0];
+      if (!g) grupos.push({ lat: c.lat, lng: c.lng, sl: c.lat, sg: c.lng, n: 1 });
+      else { g.n++; g.sl += c.lat; g.sg += c.lng; g.lat = g.sl / g.n; g.lng = g.sg / g.n; }
+    });
+    return grupos;
+  }
+
+  function textoResultado(x) {
+    var a = x.address || {};
+    var via = a.road || x.name || '';
+    var linea1 = [via, a.house_number ? '# ' + a.house_number : ''].filter(Boolean).join(' ');
+    var barrio = a.neighbourhood || a.suburb || a.quarter || a.residential || '';
+    return { t: linea1 || (x.display_name || '').split(',')[0], b: barrio };
+  }
+
+  // ---------- Buscar ----------
+  function buscar(i) {
+    var dir = campo(i, 'dir').value.trim(), bar = campo(i, 'bar').value.trim();
+    var res = geo(i).querySelector('.res'), bot = geo(i).querySelector('.bus');
+    if (dir.length < 4 && bar.length < 3) {
+      estado(i, 'mal', 'Escribe la dirección y el barrio, y luego toca Buscar.');
+      return;
+    }
+    var g = ++gen[i];
+    // Busqueda nueva: el punto anterior ya no vale
+    conf[i] = false;
+    if (marcas[i]) { map.removeLayer(marcas[i]); marcas[i] = null; }
+    pts[i] = null;
+    pintarConf(i); calcular();
+    enfocar(i);
+    res.innerHTML = '';
+    bot.disabled = true; bot.textContent = 'Buscando…';
+    estado(i, '', 'Buscando en el mapa… tarda unos segundos.');
+
+    var p = partesDir(dir), ops = [], centroBarrio = null;
+    function agregar(o) {
+      if (!coordOk(o)) return;
+      var rep = ops.some(function (x) { return L.latLng(x.lat, x.lng).distanceTo([o.lat, o.lng]) < 40 && x.nivel <= o.nivel; });
+      if (!rep) ops.push(o);
+    }
+    var cajaB = null;
+
+    var cadena = Promise.resolve();
+    // 1. Barrio: da la zona para buscar y queda como opcion aproximada
+    if (bar) cadena = cadena.then(function () {
+      return nominatim('&addressdetails=1&limit=3&viewbox=' + CALI_BOX + '&q=' + encodeURIComponent(bar + ', Cali, Valle del Cauca, Colombia'), g, i).then(function (l) {
+        // Puede haber varios con el mismo nombre (Viejo y Nuevo San Fernando)
+        var bs = l.filter(function (x) { return /neighbourhood|suburb|quarter|residential|city_district|hamlet|village/.test(x.addresstype || x.type); });
+        if (bs.length) {
+          centroBarrio = { lat: +bs[0].lat, lng: +bs[0].lon };
+          var d = 0.012;
+          cajaB = (centroBarrio.lng - d) + ',' + (centroBarrio.lat + d) + ',' + (centroBarrio.lng + d) + ',' + (centroBarrio.lat - d);
+        }
+        bs.forEach(function (b) {
+          agregar({ lat: +b.lat, lng: +b.lon, nivel: 4, titulo: 'Barrio ' + (b.name || bar) + ', Cali', prec: 'Aproximado · solo el barrio', clase: 'ap' });
+        });
+      });
+    });
+    // 2. Direccion completa: si el mapa tiene el numero de la casa, es exacta
+    if (p.completa || dir.length >= 4) cadena = cadena.then(function () {
+      var q = (p.completa || p.texto) + (bar ? ', ' + bar : '') + ', Cali, Valle del Cauca, Colombia';
+      return nominatim('&addressdetails=1&limit=5&viewbox=' + CALI_BOX + '&q=' + encodeURIComponent(q), g, i).then(function (l) {
+        l.forEach(function (x) {
+          var a = x.address || {}, tr = textoResultado(x);
+          if (a.house_number && (!p.via || clave(a.road) === clave(p.via))) {
+            agregar({ lat: +x.lat, lng: +x.lon, nivel: 1, titulo: tr.t + (tr.b ? ', ' + tr.b : ''), prec: 'Exacta · con número de casa', clase: 'ok' });
+          }
+        });
+      });
+    });
+    // 3. Cruce de vias: "Cra 70 # 9-81" queda sobre la Carrera 70, a unos 81 m de la Calle 9
+    if (p.via && p.cruce) {
+      var A = null;
+      cadena = cadena.then(function () {
+        return nominatim('&limit=40&dedupe=0&polygon_geojson=1&viewbox=' + (cajaB || CALI_BOX) + '&q=' + encodeURIComponent(p.via + ', Cali'), g, i).then(function (l) {
+          A = l.filter(function (x) { return clave(x.name) === clave(p.via); });
+        });
+      }).then(function () {
+        if (!A || !A.length) return;
+        return nominatim('&limit=40&dedupe=0&polygon_geojson=1&viewbox=' + (cajaB || CALI_BOX) + '&q=' + encodeURIComponent(p.cruce + ', Cali'), g, i).then(function (l) {
+          var B = l.filter(function (x) { return clave(x.name) === clave(p.cruce); });
+          var cs = cruces(A, B, centroBarrio ? centroBarrio.lat : 3.42);
+          if (centroBarrio) cs.sort(function (x, y) { return L.latLng(x.lat, x.lng).distanceTo([centroBarrio.lat, centroBarrio.lng]) - L.latLng(y.lat, y.lng).distanceTo([centroBarrio.lat, centroBarrio.lng]); });
+          cs.slice(0, 3).forEach(function (c, k) {
+            agregar({ lat: c.lat, lng: c.lng, nivel: 2, titulo: 'Esquina de ' + p.via + ' con ' + p.cruce + (cs.length > 1 ? ' (sector ' + (k + 1) + ')' : ''),
+                      prec: p.metros ? 'Muy cerca · la casa queda a unos ' + p.metros + ' m de esta esquina' : 'Esquina exacta', clase: 'ok' });
+          });
+          // 4. Si no se cruzan en el mapa, al menos la via (aproximado)
+          if (!cs.length) {
+            var cerca = A.slice().sort(function (x, y) {
+              if (!centroBarrio) return 0;
+              return L.latLng(+x.lat, +x.lon).distanceTo([centroBarrio.lat, centroBarrio.lng]) - L.latLng(+y.lat, +y.lon).distanceTo([centroBarrio.lat, centroBarrio.lng]);
+            })[0];
+            if (cerca) agregar({ lat: +cerca.lat, lng: +cerca.lon, nivel: 3, titulo: p.via + (bar ? ', cerca de ' + bar : ', Cali'), prec: 'Aproximado · la calle, sin el número', clase: 'ap' });
+          }
+        });
+      });
+    } else if (p.via) {
+      cadena = cadena.then(function () {
+        return nominatim('&limit=10&viewbox=' + (cajaB || CALI_BOX) + '&q=' + encodeURIComponent(p.via + ', Cali'), g, i).then(function (l) {
+          var v = l.filter(function (x) { return clave(x.name) === clave(p.via); })[0];
+          if (v) agregar({ lat: +v.lat, lng: +v.lon, nivel: 3, titulo: p.via + (bar ? ', cerca de ' + bar : ', Cali'), prec: 'Aproximado · la calle, sin el número', clase: 'ap' });
+        });
+      });
+    }
+
+    cadena.then(function () {
+      if (g !== gen[i]) return;
+      bot.disabled = false; bot.textContent = 'Buscar dirección';
+      ops.sort(function (x, y) { return x.nivel - y.nivel; });
+      ops = ops.slice(0, 5);
+      if (!ops.length) {
+        estado(i, 'mal', '<b>No encontramos esa dirección en el mapa.</b> Revisa cómo está escrita, o marca el punto tú mismo: <b>toca el mapa</b> o usa <b>Mi ubicación</b>, y luego confirma.');
+        return;
+      }
+      res.innerHTML = '<div class="res-t">Escoge la correcta:</div>' + ops.map(function (o, k) {
+        return '<button type="button" class="op" data-k="' + k + '"><b>' + esc(o.titulo) + '</b><small class="prec-' + o.clase + '">' + esc(o.prec) + '</small></button>';
+      }).join('');
+      res.querySelectorAll('.op').forEach(function (b) {
+        b.addEventListener('click', function () {
+          if (g !== gen[i]) return;
+          res.querySelectorAll('.op').forEach(function (x) { x.classList.remove('sel'); });
+          b.classList.add('sel');
+          var o = ops[+b.dataset.k];
+          poner(i, L.latLng(o.lat, o.lng), false);
+          map.setView([o.lat, o.lng], o.nivel <= 2 ? 18 : 16);
+          if (o.nivel >= 3) estado(i, 'pend', 'Esto es <b>aproximado</b>. Arrastra el punto hasta la puerta exacta y luego toca <b>Confirmar ubicación</b>.');
+          else if (o.nivel === 2 && p.metros) estado(i, 'pend', 'El punto está en la esquina. <b>Arrástralo unos ' + p.metros + ' m</b> por la ' + esc(p.via) + ' hasta la puerta y toca <b>Confirmar ubicación</b>.');
+        });
+      });
+      estado(i, '', 'Toca la opción correcta para ver el punto en el mapa.');
+    }).catch(function (e) {
+      if (e === 'viejo' || g !== gen[i]) return;
+      bot.disabled = false; bot.textContent = 'Buscar dirección';
+      var msg = e === 'limite' ? 'El buscador de mapas está muy ocupado. Espera un momento y vuelve a tocar Buscar.'
+              : e === 'red' ? 'No hay conexión o el buscador no respondió. Revisa tus datos y vuelve a intentar.'
+              : 'El buscador de mapas falló.';
+      estado(i, 'mal', '<b>' + msg + '</b> También puedes tocar el mapa o usar Mi ubicación, y confirmar.');
+    });
+  }
+
+  document.querySelectorAll('.geo').forEach(function (gbox) {
+    var i = +gbox.dataset.i;
+    gbox.querySelector('.bus').addEventListener('click', function () { buscar(i); });
+    gbox.querySelector('.conf').addEventListener('click', function () { confirmar(i); });
+  });
+
+  // ---------------- Mapa y precio por distancia ----------------
+  function iniciarMapa() {
+    if (map) { map.invalidateSize(); return; }
+    map = L.map('mapa', { zoomControl: false }).setView(CALI, 12);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+    L.circle(CALI, { radius: 15000, color: '#E8590C', weight: 2, dashArray: '8 6', fillColor: '#E8590C', fillOpacity: 0.10 }).addTo(map);
+    map.on('click', function (e) { poner(puntoActivo, e.latlng); });
+    setTimeout(function () { map.invalidateSize(); }, 250);
+  }
+
+  // escribir = true cuando el punto viene del mapa o del GPS, para que la
+  // direccion se llene sola. false cuando el punto vino de la direccion.
+  function poner(i, ll, escribir) {
+    pts[i] = ll;
+    conf[i] = false;               // punto nuevo: hay que confirmarlo
+    if (marcas[i]) map.removeLayer(marcas[i]);
+    marcas[i] = L.marker(ll, {
+      draggable: true,
+      icon: L.divIcon({ className: '', html: '<div class="marca" style="background:' + COLOR_PT[i] + '"></div>', iconSize: [18, 18], iconAnchor: [9, 9] })
+    }).addTo(map);
+    // Se puede arrastrar para corregir a mano sin volver a escribir nada
+    marcas[i].on('dragend', function (e) {
+      pts[i] = e.target.getLatLng();
+      conf[i] = false;               // lo movio: hay que confirmar de nuevo
+      pintarConf(i);
+      campo(i, 'dir').dataset.escrito = '';
+      buscarDireccion(i, pts[i]);
+      calcular();
+    });
+    if (escribir !== false) buscarDireccion(i, ll);
+    // Ya no saltamos al otro punto: primero se confirma este
+    encuadrar(); calcular(); ayuda(); pintarConf(i);
+  }
+
+  function encuadrar() {
+    var l = [pts[1], pts[2]].filter(Boolean);
+    if (l.length === 2) map.fitBounds(L.latLngBounds(l), { padding: [40, 40], maxZoom: 16 });
+    else if (l.length === 1) map.setView(l[0], 15);
+  }
+
+  function enfocar(i) {
+    puntoActivo = i;
+    $('f1').classList.toggle('f', i === 1);
+    $('f2').classList.toggle('f', i === 2);
+    ayuda();
+  }
+
+  function ayuda() {
+    var a = $('ayuda');
+    if (pts[1] && pts[2]) { a.style.display = 'none'; return; }
+    a.style.display = 'block';
+    a.textContent = puntoActivo === 1 ? 'Toca el mapa: dónde recogemos' : 'Toca el mapa: dónde entregamos';
+  }
+
+  function kmRecorrido() {
+    if (!pts[1] || !pts[2]) return null;
+    return pts[1].distanceTo(pts[2]) / 1000 * FACTOR_RUTA;
+  }
+
+  function precioDe(k) {
+    for (var i = 0; i < TRAMOS.length; i++) { if (k <= TRAMOS[i][0]) return TRAMOS[i][1]; }
+    // Pasa del ultimo tramo: se cobra el ultimo tramo mas cada km adicional
+    var ult = TRAMOS[TRAMOS.length - 1];
+    return ult[1] + Math.ceil(k - ult[0]) * KM_EXTRA;
+  }
+
+  function calcular() {
+    var k = kmRecorrido();
+    if (k === null) {
+      $('km').textContent = 'Marca en el mapa dónde recogemos y dónde entregamos para ver el precio.';
+      $('precio-b').textContent = 'desde ' + fmt(TRAMOS[0][1]);
+      return null;
+    }
+    if (k < 0.15) {
+      $('km').innerHTML = '<b>Los dos puntos están en el mismo sitio.</b><br>Marca aparte dónde recogemos y dónde entregamos.';
+      $('precio-b').textContent = 'desde ' + fmt(TRAMOS[0][1]);
+      return null;
+    }
+    var p = (k > MAX_KM) ? null : precioDe(k);
+    if (p === null) {
+      // Pasa del tope de seguridad: ahi si se cotiza aparte
+      $('km').innerHTML = 'Son unos <b>' + (Math.round(k * 10) / 10).toString().replace('.', ',') + ' km</b>. ' +
+        '<b>Pasa de ' + MAX_KM + ' km</b>, y esos recorridos los cotizamos aparte. Escríbenos para darte el precio.';
+      $('precio-b').textContent = 'Cotizar';
+      return null;
+    }
+    $('km').innerHTML = 'Son unos <b>' + (Math.round(k * 10) / 10).toString().replace('.', ',') + ' km</b> de recorrido.<br>El mandado le queda en <b>' + fmt(p) + '</b>.' +
+      '<br><span style="color:var(--m);font-size:13px">Si el punto no quedó exacto, arrástralo en el mapa.</span>';
+    $('precio-b').textContent = fmt(p);
+    return p;
+  }
+
+  // El celular casi siempre da primero una posicion floja, sacada de las
+  // antenas o el wifi, que puede fallar cuadras. El GPS de verdad tarda
+  // unos segundos en enganchar. Por eso no tomamos la primera lectura:
+  // escuchamos varias y nos quedamos con la mas precisa.
+  var BUENA = 25, PASABLE = 45;     // metros
+  window.precisionUltima = null;
+  var buscandoGps = false;
+
+  var AYUDA_GPS =
+    '<br><br><b>Para que quede bien:</b>' +
+    '<br>1. Sal a un sitio despejado. Bajo techo el GPS no ve los satélites.' +
+    '<br>2. En Android: mantén pulsado el ícono de Chrome, entra a <b>Información de la app → Permisos → Ubicación</b> y activa <b>«Usar ubicación precisa»</b>. Si está en aproximada, siempre va a fallar por cuadras.' +
+    '<br>3. Apaga el ahorro de batería, que también apaga el GPS.' +
+    '<br>4. Vuelve a tocar «Mi ubicación».' +
+    '<br><br>O más rápido: <b>arrastra el punto naranja en el mapa</b> hasta tu puerta. Eso manda al conductor al sitio exacto.';
+
+  function miUbicacion(i) {
+    enfocar(i);
+    if (!navigator.geolocation) {
+      $('gps-info').innerHTML = '<b>Este celular no deja usar la ubicación.</b> Toca el mapa para marcar el punto.';
+      return;
+    }
+    if (buscandoGps) return;
+    buscandoGps = true;
+
+    var mejor = null, reloj = null, corte = null;
+    $('gps-info').textContent = 'Buscando tu ubicación… dale unos segundos, el GPS tarda en enganchar.';
+
+    function listo() {
+      if (reloj !== null) { navigator.geolocation.clearWatch(reloj); reloj = null; }
+      clearTimeout(corte);
+      buscandoGps = false;
+
+      if (!mejor) {
+        $('gps-info').innerHTML = '<b>No pudimos tomar tu ubicación.</b> Revisa que el GPS esté encendido y que le hayas dado permiso a la app.' + AYUDA_GPS;
+        return;
+      }
+      var m = Math.round(mejor.coords.accuracy);
+      window.precisionUltima = m;
+      poner(i, L.latLng(mejor.coords.latitude, mejor.coords.longitude));
+      map.setView([mejor.coords.latitude, mejor.coords.longitude], m <= PASABLE ? 18 : 16);
+
+      if (m <= BUENA) {
+        $('gps-info').innerHTML = 'Ubicación tomada, con <b>' + m + ' metros</b> de precisión. Está bien. Si el punto no quedó justo en tu puerta, arrástralo.';
+      } else if (m <= PASABLE) {
+        $('gps-info').innerHTML = 'Ubicación tomada, con <b>' + m + ' metros</b> de precisión. Aceptable, pero <b>revisa el punto en el mapa</b> y arrástralo si hace falta.';
+      } else {
+        $('gps-info').innerHTML = '<b>El GPS solo está dando ' + m + ' metros de precisión.</b> Así el conductor puede llegar a otra cuadra.' + AYUDA_GPS;
+      }
+    }
+
+    reloj = navigator.geolocation.watchPosition(function (p) {
+      if (!mejor || p.coords.accuracy < mejor.coords.accuracy) mejor = p;
+      var m = Math.round(mejor.coords.accuracy);
+      if (m <= BUENA) { listo(); return; }               // ya esta bueno
+      $('gps-info').innerHTML = 'Buscando… por ahora va en <b>' + m + ' metros</b>. Esperando que mejore.';
+    }, function () { listo(); },
+       { enableHighAccuracy: true, maximumAge: 0, timeout: 25000 });
+
+    corte = setTimeout(listo, 20000);   // 20 segundos dandole chance al GPS
+  }
+
+  document.querySelectorAll('.miub').forEach(function (b) {
+    b.addEventListener('click', function () { miUbicacion(+b.dataset.i); });
+  });
+
+  function iniciar() {
+    $('main').style.display = 'block';
+    iniciarMapa();
+    cargarTarifas();
+    $('datos').innerHTML = '<b>' + esc(cli.nombre) + '</b><br>' + esc(cli.celular) + '<br>' + esc(cli.correo) + '<br>' + esc(cli.direccion) + ', ' + esc(cli.barrio) + ', ' + esc(cli.ciudad);
+    cargarPedidos();
+    setInterval(function () { if (!document.hidden) cargarPedidos(); }, 5000);
+  }
+
+  document.querySelectorAll('#chips .chip').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#chips .chip').forEach(function (x) { x.classList.remove('sel'); });
+      b.classList.add('sel');
+      servicio = b.textContent;
+    });
+  });
+
+  ['f1', 'f2'].forEach(function (id) {
+    var n = id === 'f1' ? 1 : 2;
+    $(id).querySelectorAll('input').forEach(function (inp) {
+      inp.addEventListener('focus', function () { enfocar(n); });
+      // Si la persona escribe, mandamos nosotros: el mapa no le pisa el texto
+      inp.addEventListener('input', function () {
+        if (inp.classList.contains('dir')) inp.dataset.escrito = '1';
+        // Cambio la direccion o el barrio: lo confirmado ya no vale,
+        // y cualquier busqueda en curso queda anulada
+        if (inp.classList.contains('dir') || inp.classList.contains('bar')) {
+          gen[n]++;
+          var gb = geo(n), bb = gb.querySelector('.bus');
+          bb.disabled = false; bb.textContent = 'Buscar dirección';
+          gb.querySelector('.res').innerHTML = '';
+          desconfirmar(n);
+          estado(n, pts[n] ? 'pend' : '', pts[n]
+            ? 'Cambiaste la dirección. Toca <b>Buscar dirección</b> o ajusta el punto en el mapa, y vuelve a confirmar.'
+            : 'Cuando termines de escribir, toca <b>Buscar dirección</b>.');
+        }
+      });
+    });
+  });
+
+  var cas = document.querySelectorAll('.pago .cas');
+  function marcar(el) {
+    var ya = el.classList.contains('sel');
+    cas.forEach(function (x) {
+      x.classList.remove('sel');
+      x.setAttribute('aria-checked', 'false');
+      x.querySelector('.caja').textContent = '';
+    });
+    pago = null;
+    if (!ya) {
+      el.classList.add('sel');
+      el.setAttribute('aria-checked', 'true');
+      el.querySelector('.caja').textContent = '✓';
+      pago = el.dataset.p;
+    }
+    $('err').textContent = '';
+  }
+  cas.forEach(function (el) {
+    el.addEventListener('click', function () { marcar(el); });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); marcar(el); }
+    });
+  });
+
+  function val(id, c) { return $(id).querySelector('.' + c).value.trim(); }
+
+  $('pedir').addEventListener('click', function () {
+    // Aqui se habilita el sonido: el navegador solo deja sonar despues
+    // de que la persona toca algo.
+    prepararSonido();
+    var err = $('err'), ok = $('ok');
+    ok.style.display = 'none';
+    if (enviando) return;
+    if (val('f1', 'dir').length < 3 || val('f2', 'dir').length < 3) {
+      err.textContent = 'Escribe la dirección de recogida y la de entrega.';
+      return;
+    }
+    if (!pago) {
+      err.textContent = 'Marca cómo vas a pagar: efectivo o Nequi.';
+      return;
+    }
+    // Solo se pide con las dos ubicaciones confirmadas y validas
+    for (var q = 1; q <= 2; q++) {
+      if (!conf[q] || !coordOk(pts[q])) {
+        err.textContent = q === 1
+          ? 'Confirma dónde recogemos: busca la dirección, revisa el punto y toca «Confirmar ubicación».'
+          : 'Confirma dónde entregamos: busca la dirección, revisa el punto y toca «Confirmar ubicación».';
+        enfocar(q);
+        $('f' + q).scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
+    var precio = calcular();
+    if (precio === null) {
+      var kk = kmRecorrido();
+      err.textContent = (kk !== null && kk > MAX_KM)
+        ? 'Ese recorrido pasa de ' + MAX_KM + ' km y se cotiza aparte. Escríbenos para darte el precio.'
+        : 'Marca en el mapa dónde recogemos y dónde entregamos, así sabemos cuánto vale.';
+      return;
+    }
+    err.textContent = 'Enviando tu pedido…';
+    enviando = true; $('pedir').disabled = true;
+    sb.from('pedidos').insert({
+      cliente_id: cli.id, servicio: SERV[servicio],
+      direccion_recogida: val('f1', 'dir'), barrio_recogida: val('f1', 'bar') || null,
+      direccion_entrega: val('f2', 'dir'), barrio_entrega: val('f2', 'bar') || null,
+      lat_recogida: pts[1].lat, lng_recogida: pts[1].lng,
+      lat_entrega: pts[2].lat, lng_entrega: pts[2].lng,
+      referencia_recogida: val('f1', 'ref') || null,
+      referencia_entrega: val('f2', 'ref') || null,
+      forma_pago: pago, precio_cop: precio,
+      ganancia_motero_cop: precio - MARGEN
+    }).select().single().then(function (r) {
+      enviando = false; $('pedir').disabled = false;
+      if (r.error) { err.textContent = errMsg(r.error); return; }
+      err.textContent = '';
+      // El precio que vale es el que puso el servidor, no el del celular.
+      var valor = (r.data && r.data.precio_cop) || precio;
+      ok.textContent = pago === 'nequi'
+        ? 'Listo, estamos buscando tu moto. El mandado quedó en ' + fmt(valor) + '. Pagas por Nequi: el conductor confirma que le llegó el pago y con tu código cierra la entrega.'
+        : 'Listo, estamos buscando tu moto. El mandado quedó en ' + fmt(valor) + '. Pagas en efectivo al conductor cuando llegue.';
+      ok.style.display = 'block';
+      // El pedido ya salio: para el proximo hay que confirmar de nuevo
+      desconfirmar(1); desconfirmar(2);
+      cargarPedidos();
+      setTimeout(function () { irA('pedidos'); }, 1200);
+    });
+  });
+
+  function activo(p) { return ['nuevo', 'aceptado', 'en_camino', 'en_recogida', 'recogido', 'en_entrega'].indexOf(p.estado) >= 0; }
+  function cargarPedidos() {
+    if (!cli) return;
+    sb.from('pedidos').select('*').eq('cliente_id', cli.id).order('creado_en', { ascending: false }).limit(20).then(function (r) {
+      if (r.error) return;
+      var ps = r.data || [];
+      var ids = ps.filter(activo).map(function (p) { return p.id; });
+      var q = ids.length ? sb.from('codigos_entrega').select('*').in('pedido_id', ids) : Promise.resolve({ data: [] });
+      q.then(function (c) {
+        var cods = {};
+        (c.data || []).forEach(function (x) { cods[x.pedido_id] = x.codigo; });
+        pintar(ps, cods);
+      });
+    });
+  }
+  // ---------- Seguir la moto en el mapa mientras viene ----------
+  var mapS = null, capaS = null;
+
+  function bolita(color) {
+    return L.divIcon({ className: '',
+      html: '<div style="width:16px;height:16px;border-radius:50%;background:' + color +
+            ';border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)"></div>',
+      iconSize: [16, 16], iconAnchor: [8, 8] });
+  }
+  function iconoMoto() {
+    return L.divIcon({ className: '',
+      html: '<div class="moto-viva"><svg viewBox="0 0 32 32" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' +
+            '<circle cx="8" cy="23" r="4.5"/><circle cx="25" cy="23" r="4.5"/><path d="M8 23h6l4-8h-5M18 15l3 8M18 15h5l2 8"/></svg></div>',
+      iconSize: [38, 38], iconAnchor: [19, 19] });
+  }
+  function hace(iso) {
+    if (!iso) return '';
+    var s = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+    if (s < 60) return 'hace un momento';
+    if (s < 3600) return 'hace ' + Math.round(s / 60) + ' min';
+    return 'hace rato';
+  }
+
+  function seguir(p) {
+    var caja = $('seg');
+    var hayMoto = p && p.lat_conductor !== null && p.lat_conductor !== undefined;
+    if (!hayMoto) { caja.style.display = 'none'; return; }
+    caja.style.display = 'block';
+
+    if (!mapS) {
+      mapS = L.map('mapa-seg', { zoomControl: false }).setView(CALI, 13);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19, attribution: '&copy; OpenStreetMap'
+      }).addTo(mapS);
+    }
+    setTimeout(function () { mapS.invalidateSize(); }, 80);
+
+    if (capaS) mapS.removeLayer(capaS);
+    capaS = L.layerGroup().addTo(mapS);
+
+    var moto = [p.lat_conductor, p.lng_conductor];
+    var rec = (p.lat_recogida === null || p.lat_recogida === undefined) ? null : [p.lat_recogida, p.lng_recogida];
+    var ent = (p.lat_entrega === null || p.lat_entrega === undefined) ? null : [p.lat_entrega, p.lng_entrega];
+
+    if (rec) L.marker(rec, { icon: bolita('#E8590C'), interactive: false }).addTo(capaS);
+    if (ent) L.marker(ent, { icon: bolita('#111827'), interactive: false }).addTo(capaS);
+    L.marker(moto, { icon: iconoMoto(), interactive: false }).addTo(capaS);
+
+    // Antes de recoger va hacia la recogida; despues, hacia la entrega
+    var yendoARecoger = ['aceptado', 'en_camino', 'en_recogida'].indexOf(p.estado) >= 0;
+    var destino = yendoARecoger ? rec : ent;
+
+    if (destino) {
+      var linea = L.polyline([moto, destino], { color: '#E8590C', weight: 5, opacity: .85 }).addTo(capaS);
+      var u = 'https://router.project-osrm.org/route/v1/driving/' +
+              moto[1] + ',' + moto[0] + ';' + destino[1] + ',' + destino[0] +
+              '?overview=full&geometries=geojson';
+      fetch(u).then(function (r) { return r.json(); }).then(function (j) {
+        var g = j && j.routes && j.routes[0] && j.routes[0].geometry;
+        if (g && capaS && mapS.hasLayer(capaS)) {
+          linea.setLatLngs(g.coordinates.map(function (c) { return [c[1], c[0]]; }));
+        }
+      }).catch(function () { });
+      mapS.fitBounds(L.latLngBounds([moto, destino]), { padding: [34, 34], maxZoom: 16 });
+    } else {
+      mapS.setView(moto, 15);
+    }
+
+    var txt = yendoARecoger ? 'La moto va hacia el punto de recogida.' : 'La moto va hacia donde entregamos.';
+    if (destino) {
+      var km = L.latLng(moto[0], moto[1]).distanceTo(L.latLng(destino[0], destino[1])) / 1000 * FACTOR_RUTA;
+      txt += ' Le faltan unos <b>' + (Math.round(km * 10) / 10).toString().replace('.', ',') +
+             ' km</b>, como <b>' + Math.max(1, Math.round(km / 20 * 60)) + ' min</b>.';
+    }
+    $('seg-est').innerHTML = txt + '<br><span style="color:var(--m);font-size:13px">Ubicación ' + hace(p.pos_en) + '.</span>';
+  }
+
+  // Avisar cuando algo pasa con el pedido: que ya hay moto, que llegó a
+  // recoger, que va en camino, que lo entregaron. El cliente no está
+  // mirando la pantalla todo el tiempo.
+  var estadoAnterior = {}, primeraMirada = true;
+  function avisarCambios(ps) {
+    var cambio = null;
+    ps.forEach(function (p) {
+      var antes = estadoAnterior[p.id];
+      if (antes && antes !== p.estado) cambio = p;
+      estadoAnterior[p.id] = p.estado;
+    });
+    if (primeraMirada) { primeraMirada = false; return; }  // al abrir no suena
+    if (cambio) sonarAviso();
+  }
+
+  function pintar(ps, cods) {
+    var l = $('lista');
+    avisarCambios(ps);
+    seguir(ps.filter(activo)[0]);
+    if (!ps.length) { l.innerHTML = '<div class="vacio">Todavía no tienes pedidos.</div>'; return; }
+    l.innerHTML = ps.map(function (p) {
+      var cl = p.estado === 'entregado' ? ' v' : p.estado === 'cancelado' ? ' r' : '';
+      var cod = (activo(p) && cods[p.id]) ? '<div class="cod">Tu código de entrega<b>' + esc(cods[p.id]) + '</b>Dáselo al conductor cuando te entregue.</div>' : '';
+      var can = p.estado === 'nuevo' ? '<br><button type="button" data-can="' + p.id + '">Cancelar pedido</button>' : '';
+      var fot = (p.estado === 'entregado' && p.foto_entrega) ? '<br><button type="button" class="vfoto" data-foto="' + esc(p.foto_entrega) + '" data-id="' + p.id + '">Ver la foto de la entrega</button><div class="fent" id="fent-' + p.id + '"></div>' : '';
+      return '<div class="ped"><span class="est' + cl + '">' + esc(ETQ[p.estado] || p.estado) + '</span><br><b>' + esc(SNOM[p.servicio] || p.servicio) + '</b> · ' + (p.forma_pago === 'nequi' ? 'Nequi' : 'Efectivo') + ' · ' + fmt(p.precio_cop) +
+        '<br>Recoger: ' + esc(p.direccion_recogida) + (p.barrio_recogida ? ', ' + esc(p.barrio_recogida) : '') +
+        '<br>Entregar: ' + esc(p.direccion_entrega) + (p.barrio_entrega ? ', ' + esc(p.barrio_entrega) : '') + cod + can + fot + '</div>';
+    }).join('');
+  }
+  document.addEventListener('click', function (e) {
+    var ft = e.target && e.target.dataset && e.target.dataset.foto;
+    if (ft) {
+      var caja = document.getElementById('fent-' + e.target.dataset.id);
+      if (caja.firstChild) { caja.innerHTML = ''; return; }          // segundo toque: la cierra
+      caja.textContent = 'Abriendo la foto…';
+      sb.storage.from('documentos').createSignedUrl(ft, 3600).then(function (r) {
+        if (r.error || !r.data) { caja.textContent = 'No se pudo abrir la foto. Inténtalo de nuevo.'; return; }
+        caja.innerHTML = '<img src="' + r.data.signedUrl + '" alt="Foto de la entrega">';
+      });
+      return;
+    }
+    var id = e.target && e.target.dataset && e.target.dataset.can;
+    if (!id) return;
+    e.target.disabled = true;
+    sb.rpc('cancelar_pedido', { p_id: id }).then(function () { cargarPedidos(); });
+  });
+
+  function irA(t) {
+    document.querySelectorAll('nav button').forEach(function (x) { x.classList.toggle('on', x.dataset.t === t); });
+    document.querySelectorAll('.pag').forEach(function (p) { p.classList.remove('on'); });
+    $('p-' + t).classList.add('on');
+    if (t === 'pedidos') cargarPedidos();
+  }
+  document.querySelectorAll('nav button').forEach(function (b) {
+    b.addEventListener('click', function () { irA(b.dataset.t); });
+  });
+})();
+</script>
+</body>
+</html>
