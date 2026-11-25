@@ -418,11 +418,20 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     el.textContent = txt;
     el.style.display = txt ? 'block' : 'none';
   }
-  function enlaces(pre, d, b, lat, lng) {
+  function enlaces(pre, d, b, lat, lng, calidad) {
     // Solo se navega con un punto valido: numeros reales, en rango y en la zona de Cali
     var la = (lat === null || lat === undefined || lat === '') ? NaN : Number(lat);
     var lo = (lng === null || lng === undefined || lng === '') ? NaN : Number(lng);
     var hayPunto = isFinite(la) && isFinite(lo) && la > 3.15 && la < 3.65 && lo > -76.8 && lo < -76.3;
+    if (calidad === 'barrio' || calidad === 'calle' || calidad === 'sin_mapa') {
+      // La direccion no esta en nuestro mapa: el punto (si hay) es solo el barrio.
+      // Google Maps y Waze buscan la direccion escrita, que ellos si suelen tener.
+      avisoNav(pre, 'Esta dirección todavía no está en nuestro mapa. Google Maps y Waze la buscan por el texto: revisa que el resultado sea en el barrio ' + (b || 'indicado') + '. Si dudas, llama al cliente.');
+      var qt = encodeURIComponent(dirTxt(d, b) + ', Valle del Cauca, Colombia');
+      $(pre + '-waze').href = 'https://waze.com/ul?q=' + qt + '&navigate=yes';
+      $(pre + '-gmaps').href = 'https://www.google.com/maps/dir/?api=1&destination=' + qt + '&travelmode=driving';
+      return;
+    }
     if (hayPunto) {
       avisoNav(pre, '');
       var ll = la.toFixed(6) + ',' + lo.toFixed(6);   // siempre latitud, longitud
@@ -728,7 +737,7 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
       fr = { aceptado: 0, en_camino: 1, en_recogida: 2 }[s];
       $('r-dir').textContent = dirTxt(ped.direccion_recogida, ped.barrio_recogida);
       pintarRef('r-ref', ped.referencia_recogida);
-      enlaces('r', ped.direccion_recogida, ped.barrio_recogida, ped.lat_recogida, ped.lng_recogida);
+      enlaces('r', ped.direccion_recogida, ped.barrio_recogida, ped.lat_recogida, ped.lng_recogida, ped.calidad_recogida);
       $('r-pago').textContent = textoPago();
       pintarR(); ver('recoger');
     } else if (s === 'recogido' || s === 'en_entrega') {
@@ -796,7 +805,7 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     fotoEnt = null; $('foto-ent').value = ''; $('foto-nom').textContent = ''; cerrando = false; limpiarPrev();
     $('e-dir').textContent = dirTxt(ped.direccion_entrega, ped.barrio_entrega);
     pintarRef('e-ref', ped.referencia_entrega);
-    enlaces('e', ped.direccion_entrega, ped.barrio_entrega, ped.lat_entrega, ped.lng_entrega);
+    enlaces('e', ped.direccion_entrega, ped.barrio_entrega, ped.lat_entrega, ped.lng_entrega, ped.calidad_entrega);
     $('e-pago').textContent = textoPago();
     $('e-conf').classList.toggle('oculto', ped.forma_pago !== 'nequi');
     nconf = false; $('cas').classList.remove('sel'); $('cas').querySelector('.caja').textContent = '';

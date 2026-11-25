@@ -27,6 +27,7 @@
   .fila .est { font-size:13px; line-height:1.4; margin-top:4px; color:var(--m); }
   .fila .est:empty { display:none; }
   .fila .est.ok { color:#166534; } .fila .est.mal { color:#B91C1C; }
+  .fila .est.aviso { color:#92400E; }
   .fila .tit { font-size:12px; font-weight:700; letter-spacing:.3px; text-transform:uppercase; color:var(--m); margin-bottom:2px; }
   .fila .acc { display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:6px; }
   .fila .acc button { border:0; background:transparent; color:var(--n); font-weight:700; font-size:13px; padding:4px 0; cursor:pointer; font-family:inherit; }
@@ -249,6 +250,7 @@
   var KM_EXTRA = 1200;         // cada km que pasa del ultimo tramo
   var MAX_KM = 40;             // tope de seguridad: mas de esto si se cotiza aparte
   var FACTOR_RUTA = 1.3;       // las motos no van en linea recta
+  var SIN_MAPA = 8000;         // precio cuando una direccion no esta en el mapa (lo pone el servidor)
 
   function cargarTarifas() {
     sb.from('tarifas').select('*').eq('id', 1).maybeSingle().then(function (r) {
@@ -258,6 +260,7 @@
       if (t.margen_cop !== null && t.margen_cop !== undefined) MARGEN = t.margen_cop;
       if (t.max_km) MAX_KM = t.max_km;
       if (t.km_extra_cop) KM_EXTRA = t.km_extra_cop;
+      if (t.sin_mapa_cop) SIN_MAPA = t.sin_mapa_cop;
       FACTOR_RUTA = Number(t.factor_ruta);
       calcular();
     });
@@ -346,6 +349,7 @@
   var origen = { 1: null, 2: null };        // texto | gps | compartida | mapa
   var gen = { 1: 0, 2: 0 };                 // descarta respuestas viejas
   var meta = { 1: {}, 2: {} };              // mapaTxt, fuente, precision, calidad
+  var sinMapa = { 1: false, 2: false };     // direccion con barrio que el mapa no tiene: se pide igual
   var tecleo = { 1: 0, 2: 0 };              // cuantas veces escribio en la direccion
   var buscado = { 1: '', 2: '' };           // ultimo texto que se busco
   var GPS_MAX = 50, GPS_APROX = 150;                         // metros: mas que esto no se acepta
@@ -371,7 +375,7 @@
   // Quita el punto de ESE campo (el otro no se toca)
   function anular(i) {
     gen[i]++;
-    conf[i] = false; origen[i] = null; pts[i] = null; meta[i] = {};
+    conf[i] = false; origen[i] = null; pts[i] = null; meta[i] = {}; sinMapa[i] = false;
     quitarMarca(i); mapaTxt(i); opciones(i, '');
     var t = $('f' + i).querySelector('.pt');
     if (t) t.style.boxShadow = '';
@@ -386,7 +390,7 @@
       return false;
     }
     gen[i]++;
-    pts[i] = ll; conf[i] = true; origen[i] = como;
+    pts[i] = ll; conf[i] = true; origen[i] = como; sinMapa[i] = false;
     meta[i] = { fuente: como, precision: (extra && extra.precision) || null,
                 calidad: (extra && extra.calidad) || como, mapaTxt: (extra && extra.mapaTxt) || null };
     mapaTxt(i); opciones(i, '');
@@ -696,7 +700,7 @@
               return centro ? L.latLng(+x.lat, +x.lon).distanceTo([centro.lat, centro.lng]) - L.latLng(+y.lat, +y.lon).distanceTo([centro.lat, centro.lng]) : 0;
             })[0];
             // Solo la calle sirve si queda en la zona del barrio; sin barrio no se adivina
-            if (cerca && centro && L.latLng(+cerca.lat, +cerca.lon).distanceTo([centro.lat, centro.lng]) < 1500) agregar({ lat: +cerca.lat, lng: +cerca.lon, nivel: 3, calidad: 'aproximada', titulo: p.via + (bar ? ', cerca de ' + bar : ''), prec: 'Aproximada · solo la calle, sin el número' });
+            if (cerca && centro && L.latLng(+cerca.lat, +cerca.lon).distanceTo([centro.lat, centro.lng]) < 1500) agregar({ lat: +cerca.lat, lng: +cerca.lon, nivel: 3, calidad: 'calle', titulo: p.via + (bar ? ', cerca de ' + bar : ''), prec: 'Aproximada · solo la calle, sin el número' });
           }
         });
       });
@@ -706,13 +710,32 @@
       ops.sort(function (x, y) { return x.nivel - y.nivel; });
       ops = ops.slice(0, 4);
       if (!ops.length) {
-        estado(i, 'mal', '<b>No encontramos esa dirección en el mapa de Cali.</b> Tu texto queda guardado. ' + (bar ? 'Revísala, o' : 'Escribe también el <b>barrio</b>, o') + ' toca <b>Usar mi ubicación actual</b> si estás en ese sitio, o toca el mapa donde queda.');
+        var NO_MAPA = '<b>Tu dirección todavía no está en nuestro mapa. Puedes pedir igual:</b> el conductor llega con tu dirección escrita y la registramos para tus próximos pedidos.';
+        if (!bar) {
+          estado(i, 'aviso', NO_MAPA + ' Para eso escribe el <b>barrio</b>.');
+          return;
+        }
+        if (centro) {
+          // El barrio si esta: sirve para calcular el precio. El conductor navega por el texto.
+          aceptar(i, centro.lat, centro.lng, 'texto', NO_MAPA + ' Si quieres más precisión, toca el mapa donde queda o usa tu ubicación.',
+                  { calidad: 'barrio', mapaTxt: 'Barrio ' + bar + ' (la dirección exacta la busca el conductor)' });
+          $('f' + i).querySelector('.est').className = 'est aviso';
+          if (map) map.setView([centro.lat, centro.lng], 15);
+          return;
+        }
+        // Ni la direccion ni el barrio estan en el mapa: se pide igual, con precio base
+        sinMapa[i] = true;
+        meta[i] = { fuente: 'texto', calidad: 'sin_mapa', mapaTxt: null };
+        estado(i, 'aviso', NO_MAPA + ' El precio queda en la tarifa base.');
+        calcular(); ayuda();
         return;
       }
       // La mejor opcion se toma sola: el cliente no tiene que escoger nada
       var o0 = ops[0];
       aceptar(i, o0.lat, o0.lng, 'texto', o0.nivel === 1 ? '<b>Dirección ubicada en el mapa.</b>' :
+          o0.calidad === 'calle' ? '<b>Ubicamos la calle, pero no el número.</b> Puedes pedir igual: el conductor busca tu dirección escrita y la registramos para tus próximos pedidos. Si quieres más precisión, toca el mapa donde queda.' :
           '<b>Dirección ubicada</b> (cerca de la esquina). Si no quedó en la puerta, usa <b>Usar mi ubicación actual</b> o arrastra el marcador.', { calidad: o0.calidad, mapaTxt: o0.titulo });
+      if (o0.calidad === 'calle') $('f' + i).querySelector('.est').className = 'est aviso';
       if (map) map.setView([o0.lat, o0.lng], 17);
       var gA = gen[i];
       if (ops.length > 1) {
@@ -833,6 +856,12 @@
 
   function calcular() {
     var k = kmRecorrido();
+    // Una direccion que no esta en el mapa (ni su barrio): el servidor cobra la tarifa base
+    if (k === null && [1, 2].every(function (q) { return pts[q] || sinMapa[q]; })) {
+      $('km').innerHTML = 'Una de las direcciones todavía no está en nuestro mapa: el mandado queda en la <b>tarifa base de ' + fmt(SIN_MAPA) + '</b>.';
+      $('precio-b').textContent = fmt(SIN_MAPA);
+      return SIN_MAPA;
+    }
     if (k === null) {
       $('km').textContent = 'Escribe dónde recogemos y dónde entregamos para ver el precio.';
       $('precio-b').textContent = 'desde ' + fmt(TRAMOS[0][1]);
@@ -992,6 +1021,7 @@
       inp.addEventListener('input', function () {
         dirInp.dataset.auto = '';
         if (inp === dirInp) tecleo[n]++;
+        if (sinMapa[n]) { sinMapa[n] = false; calcular(); }
         // El barrio que puso el mapa era de la direccion anterior: se borra para no buscar en otro lado
         if (inp === dirInp && barInp.dataset.auto === '1') { barInp.value = ''; barInp.dataset.auto = ''; }
         if (inp === barInp) barInp.dataset.auto = '';
@@ -1102,7 +1132,8 @@
     }
     // Cada punto necesita su ubicacion en el mapa. Si hay direccion escrita
     // pero aun no hay punto, se busca ya mismo (sin obligar a escribir de nuevo).
-    var faltan = [1, 2].filter(function (q) { return !conf[q] || !coordOk(pts[q]); });
+    function falta(q) { return !sinMapa[q] && (!conf[q] || !coordOk(pts[q])); }
+    var faltan = [1, 2].filter(falta);
     if (faltan.length) {
       if (ubicando) return;
       ubicando = true; $('pedir').disabled = true;
@@ -1111,9 +1142,11 @@
       faltan.forEach(function (q) { cad = cad.then(function () { return buscarTexto(q, true); }); });
       cad.then(function () {
         ubicando = false; $('pedir').disabled = false;
-        var sigue = [1, 2].filter(function (q) { return !conf[q] || !coordOk(pts[q]); })[0];
+        var sigue = [1, 2].filter(falta)[0];
         if (!sigue) { err.textContent = ''; $('pedir').click(); return; }
-        err.textContent = 'No pudimos ubicar la dirección de ' + (sigue === 1 ? 'recogida' : 'entrega') + '. Revísala o toca Usar mi ubicación actual.';
+        err.textContent = val('f' + sigue, 'bar')
+          ? 'No pudimos ubicar la dirección de ' + (sigue === 1 ? 'recogida' : 'entrega') + '. Revísala o toca Usar mi ubicación actual.'
+          : 'La dirección de ' + (sigue === 1 ? 'recogida' : 'entrega') + ' no está en nuestro mapa: escribe el barrio y puedes pedir igual.';
         enfocar(sigue); $('f' + sigue).scrollIntoView({ behavior: 'smooth', block: 'center' });
       });
       return;
@@ -1136,8 +1169,8 @@
       cliente_id: cli.id, servicio: SERV[servicio],
       direccion_recogida: val('f1', 'dir'), barrio_recogida: val('f1', 'bar') || null,
       direccion_entrega: val('f2', 'dir'), barrio_entrega: val('f2', 'bar') || null,
-      lat_recogida: pts[1].lat, lng_recogida: pts[1].lng,
-      lat_entrega: pts[2].lat, lng_entrega: pts[2].lng,
+      lat_recogida: pts[1] ? pts[1].lat : null, lng_recogida: pts[1] ? pts[1].lng : null,
+      lat_entrega: pts[2] ? pts[2].lat : null, lng_entrega: pts[2] ? pts[2].lng : null,
       referencia_recogida: [val('f1', 'comp'), val('f1', 'ref')].filter(Boolean).join(' · ') || null,
       referencia_entrega: [val('f2', 'comp'), val('f2', 'ref')].filter(Boolean).join(' · ') || null,
       complemento_recogida: val('f1', 'comp') || null, complemento_entrega: val('f2', 'comp') || null,
@@ -1145,7 +1178,7 @@
       fuente_recogida: meta[1].fuente || null, fuente_entrega: meta[2].fuente || null,
       precision_recogida: meta[1].precision || null, precision_entrega: meta[2].precision || null,
       calidad_recogida: meta[1].calidad || null, calidad_entrega: meta[2].calidad || null,
-      confirmada_recogida: true, confirmada_entrega: true,
+      confirmada_recogida: !sinMapa[1], confirmada_entrega: !sinMapa[2],
       forma_pago: pago, precio_cop: precio,
       ganancia_motero_cop: precio - MARGEN
     }).select().single().then(function (r) {
