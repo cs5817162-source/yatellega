@@ -182,6 +182,7 @@
       <div class="chips" id="per"><button class="ch on" data-p="1" type="button">Hoy</button><button class="ch" data-p="7" type="button">7 días</button><button class="ch" data-p="30" type="button">30 días</button></div>
       <div class="kpis" id="res-k"></div>
       <div class="card"><h3>Mandados por hora</h3><div class="sub" id="hora-sub"></div><div class="barras" id="hora-b"></div><div class="eje" id="hora-e"></div><div class="lg"><span><i style="background:#E8590C"></i>Completados</span><span><i style="background:#E9EAEB"></i>Recibidos</span></div></div>
+      <div class="card"><h3>Calificaciones bajas</h3><div class="sub">1 o 2 estrellas en el período: revisa qué pasó.</div><div id="cal-bajas"></div></div>
       <div class="card"><h3>Cómo terminaron</h3><div class="sub">Todo lo recibido en el período.</div><div class="chips" id="fin-c"></div></div>
       <div class="card"><div class="lt"><h3>Rendimiento de conductores</h3><button class="btn g sm" id="csv-ren" type="button">Exportar CSV</button></div><div id="ren"></div></div>
       <div class="card"><h3>Detalle de mandados</h3><div class="sub">Los últimos del período.</div><div id="det" style="overflow-x:auto"></div></div>
@@ -292,7 +293,9 @@
 <script src="ytl.js"></script>
 <script>
 (function () {
-  var D = { mot: [], cli: [], ped: [], inc: [] };
+  var D = { mot: [], cli: [], ped: [], inc: [], cal: [] };
+  // Promedio de estrellas: "4,8" o null si no hay
+  function prom(l, campo) { if (!l.length) return null; return (Math.round(l.reduce(function (a, c) { return a + c[campo]; }, 0) / l.length * 10) / 10).toString().replace('.', ','); }
   var ultima = '', vista = 'vivo', per = 1, mF = 'todos', iF = 'abiertas', map = null;
   var SNOM = { paquete: 'Mandado', medicamentos: 'Medicamentos', comida: 'Comida', productos: 'Productos' };
   var ETQ = { nuevo: ['Sin conductor', 'r'], aceptado: ['Asignado', 'n'], en_camino: ['En camino', 'n'], en_recogida: ['Recogiendo', 'n'], recogido: ['Recogido', 'n'], en_entrega: ['Entregando', 'n'], entregado: ['Entregado', 'v'], cancelado: ['Cancelado', 'a'] };
@@ -336,9 +339,10 @@
       sb.from('moteros').select('*').order('creado_en', { ascending: false }),
       sb.from('clientes').select('*').order('creado_en', { ascending: false }),
       sb.from('pedidos').select('*').order('creado_en', { ascending: false }).limit(1000),
-      sb.from('incidencias').select('*').order('creado_en', { ascending: false }).limit(300)
+      sb.from('incidencias').select('*').order('creado_en', { ascending: false }).limit(300),
+      sb.from('calificaciones').select('*').order('creado_en', { ascending: false }).limit(3000)
     ]).then(function (r) {
-      D.mot = r[0].data || []; D.cli = r[1].data || []; D.ped = r[2].data || []; D.inc = r[3].data || [];
+      D.mot = r[0].data || []; D.cli = r[1].data || []; D.ped = r[2].data || []; D.inc = r[3].data || []; D.cal = (r[4] && !r[4].error && r[4].data) || [];
       var f = JSON.stringify(D) + '|' + new Date().getMinutes();
       if (f === ultima) return;
       ultima = f;
@@ -411,9 +415,13 @@
       K('Mandados', ps.length, 'Recibidos en el período') +
       K('Completados', ent.length, ps.length ? Math.round(ent.length / ps.length * 100) + ' % de los recibidos' : 'Sin mandados') +
       K('Ingresos', fmt(ing), 'De mandados completados') +
-      K('Tu ganancia (15 %)', fmt(gan), 'Lo que queda para Ya te llega') +
+      K('Tu ganancia (margen)', fmt(gan), 'Lo que queda para Ya te llega') +
       K('Ticket promedio', ent.length ? fmt(ing / ent.length) : 'Sin datos', 'Por mandado completado') +
-      K('Calificación', 'Sin datos', 'Nadie ha calificado') +
+      (function () {
+        var cp = D.cal.filter(enRango);
+        return cp.length ? K('Calificación', '★ ' + prom(cp, 'estrellas_conductor'), 'Conductores · pedidos ★ ' + prom(cp, 'estrellas_pedido') + ' (' + cp.length + ')')
+                         : K('Calificación', 'Sin datos', 'Nadie ha calificado en el período');
+      })() +
       K('Duración promedio', dur === null ? 'Sin datos' : (dur < 1 ? 'Menos de 1 min' : dur + ' min'), 'Desde que entra hasta que termina') +
       K('Clientes nuevos', nuevos, 'Se registraron en el período');
     var rec = [], com = [];
@@ -425,6 +433,11 @@
     $('hora-sub').textContent = ps.length ? 'La hora más activa fue las ' + hh(mh) + ' (' + rec[mh] + ').' : 'Todavía no hay mandados en este período.';
     $('hora-b').innerHTML = rec.map(function (n, i) { return '<div class="c"><div class="t" style="height:' + (n ? Math.max(4, n / mx * 100) : 1) + '%"><div class="o" style="height:' + (n ? com[i] / n * 100 : 0) + '%"></div></div></div>'; }).join('');
     $('hora-e').innerHTML = rec.map(function (n, i) { return '<span>' + (i % 3 === 0 ? hh(i).replace(' ', '') : '') + '</span>'; }).join('');
+    var bajas = D.cal.filter(function (c) { return enRango(c) && (c.estrellas_conductor <= 2 || c.estrellas_pedido <= 2); });
+    $('cal-bajas').innerHTML = bajas.length ? '<table class="tabla"><tr><th>Fecha</th><th>Conductor</th><th>Cliente</th><th>Pedido</th><th>Conductor</th><th>Comentario</th></tr>' + bajas.map(function (c) {
+      var d = new Date(c.creado_en);
+      return '<tr><td>' + d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) + '</td><td>' + esc(nombreMot(c.motero_id)) + '</td><td>' + esc(nombreCli(c.cliente_id)) + '</td><td>★ ' + c.estrellas_pedido + '</td><td>★ ' + c.estrellas_conductor + '</td><td>' + esc(c.comentario || '') + '</td></tr>';
+    }).join('') + '</table>' : '<div class="vacio">Ninguna en este período.</div>';
     $('fin-c').innerHTML = [[ent.length, 'completados'], [can.length, 'cancelados'], [esp.length, 'esperando moto'], [cur, 'en curso']].map(function (x) { return '<span class="ch" style="cursor:default"><b>' + x[0] + '</b> ' + x[1] + '</span>'; }).join('');
     var filas = D.mot.filter(function (m) { return m.estado === 'aprobado'; }).map(function (m) {
       var mine = ent.filter(function (p) { return p.motero_id === m.id; });
@@ -454,7 +467,7 @@
       if (m.estado === 'aprobado') acc += '<button class="btn g sm" data-sus="' + m.id + '" type="button">Suspender</button>';
       acc += '</div>';
       return '<div class="mc"><div class="top"><span class="av">' + esc(ini(m.nombre)) + '</span><div><b>' + esc(m.nombre) + '</b><div class="sub" style="margin:0">+57' + esc(m.celular) + '</div></div></div>' + tag + '<hr>' +
-        '<div class="g2"><div>Vehículo<b>Moto ' + esc(m.placa) + '</b></div><div>Calificación<i>Sin calificar</i></div><div>Mandados<b>' + hechos.length + '</b></div><div>Ganó<b>' + fmt(hechos.reduce(function (a, p) { return a + p.ganancia_motero_cop; }, 0)) + '</b></div></div>' + acc +
+        '<div class="g2"><div>Vehículo<b>Moto ' + esc(m.placa) + '</b></div><div>Calificación' + (function () { var cm = D.cal.filter(function (c) { return c.motero_id === m.id; }); return cm.length ? '<b>★ ' + prom(cm, 'estrellas_conductor') + ' <small style="font-weight:400;color:#6B7176">(' + cm.length + ')</small></b>' : '<i>Sin calificar</i>'; })() + '</div><div>Mandados<b>' + hechos.length + '</b></div><div>Ganó<b>' + fmt(hechos.reduce(function (a, p) { return a + p.ganancia_motero_cop; }, 0)) + '</b></div></div>' + acc +
         '<details><summary>Ver datos y documentos</summary>Cédula ' + esc(m.cedula) + ' · Nequi ' + esc(m.nequi || '—') + '<br>' + esc(m.direccion) + ', ' + esc(m.barrio) + ', ' + esc(m.ciudad) + '<br>' + esc(m.marca || '') + ' ' + esc(m.modelo || m.anio) + ' ' + esc(m.color || '') +
         '<br>SOAT ' + esc(vig(m.soat_vence)) + (m.foto_soat ? ' (con foto)' : '') + '<br>Tecnomecánica ' + (m.tecnomecanica_vence ? esc(vig(m.tecnomecanica_vence)) : (m.foto_tecnomecanica ? 'con foto' : 'no aplica')) + '<br>Licencia ' + esc(vig(m.licencia_vence)) +
         '<div><button class="btn w sm" style="margin-top:10px" data-docs="' + m.id + '" type="button">Abrir fotos</button></div><div class="docs" id="docs-' + m.id + '"></div></details></div>';

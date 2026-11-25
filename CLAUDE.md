@@ -82,6 +82,13 @@ Tablas: `clientes`, `moteros` (= conductores), `pedidos`, `codigos_entrega`,
 - `contacto_pedido` (script 13): celular de la otra parte solo con el pedido
   en curso.
 
+### Calificaciones (script 15)
+
+- `calificaciones`: una por pedido entregado, estrellas del pedido y del
+  conductor (1 a 5) y comentario opcional. Solo por `calificar_pedido` (el
+  cliente dueño). El conductor ve su promedio con `mi_calificacion`; el panel
+  las ve todas (promedios y calificaciones bajas en Resumen).
+
 ### Cómo cambiar la base de datos
 
 1. Avisar al dueño y esperar su OK.

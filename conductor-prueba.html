@@ -293,7 +293,7 @@ body.mapa #v-recoger .grande, body.mapa #v-entregar .grande { margin-top:8px; }
     <button id="btn-loc" type="button" aria-label="Mi ubicación"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1F2937" stroke-width="2" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8z"/></svg></button>
     <div id="aviso"></div>
   </div>
-  <div id="menu" class="oculto"><div class="mi"><img src="logo.png" alt="" width="56" height="56"><div><b>Ya te llega</b><div class="mc" id="menu-c"></div></div></div><button class="grande p" type="button" id="menu-gan">Mis ganancias</button><button class="grande s" type="button" id="menu-son">Sonido: activado</button><button class="grande s" type="button" onclick="salir()">Cerrar sesión</button><button class="grande s" type="button" id="menu-x">Cerrar menú</button></div>
+  <div id="menu" class="oculto"><div class="mi"><img src="logo.png" alt="" width="56" height="56"><div><b>Ya te llega</b><div class="mc" id="menu-c"></div><div id="menu-cal" style="font-size:15px;font-weight:700;color:#E8590C;margin-top:2px"></div></div></div><button class="grande p" type="button" id="menu-gan">Mis ganancias</button><button class="grande s" type="button" id="menu-son">Sonido: activado</button><button class="grande s" type="button" onclick="salir()">Cerrar sesión</button><button class="grande s" type="button" id="menu-x">Cerrar menú</button></div>
 
   <div id="gan" class="oculto">
     <div class="gan-top">
@@ -1206,6 +1206,14 @@ body.mapa #v-recoger .grande, body.mapa #v-entregar .grande { margin-top:8px; }
     }, function () {});
   }
   window.__cartera = cartera;
+
+  // Su calificacion promedio (de los clientes), al abrir el menu
+  $('btn-menu').addEventListener('click', function () {
+    sb.rpc('mi_calificacion').then(function (r) {
+      var x = r && !r.error && r.data && r.data[0];
+      $('menu-cal').textContent = (x && x.total) ? '★ ' + String(x.promedio).replace('.', ',') + ' · ' + x.total + (x.total === 1 ? ' calificación' : ' calificaciones') : 'Todavía sin calificaciones';
+    }, function () {});
+  });
 
   // Mientras espera pedidos: aviso si va cerca del limite o ya llego (cada minuto)
   function avisoLimite() {

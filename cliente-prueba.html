@@ -83,6 +83,23 @@
   .fila .est { font-size:12px; line-height:1.35; }
   .fila .mapa-txt { font-size:11px; }
   #swap { position:relative; z-index:2; display:flex; align-items:center; justify-content:center; width:30px; height:30px; padding:0; margin:-12px 14px -12px auto; border-radius:50%; font-size:15px; box-shadow:0 1px 3px rgba(0,0,0,.15); }
+  /* Calificacion con estrellas */
+  .calif { background:#fff; border-radius:12px; padding:10px 12px; margin-top:8px; }
+  .calif b { display:block; font-size:15px; }
+  .calif small { display:block; font-size:12px; color:var(--m); margin-bottom:4px; }
+  .cal-f { display:flex; align-items:center; gap:2px; margin-top:4px; }
+  .cal-f span:first-child { width:78px; font-size:13px; color:var(--m); }
+  .est-s { border:0; background:transparent; padding:2px 3px; font-size:28px; line-height:1; color:#D6D3CB; cursor:pointer; font-family:inherit; }
+  span.est-s { font-size:22px; cursor:default; }
+  .est-s.on { color:var(--n); }
+  .calif .cal-t { width:100%; margin-top:8px; border:1px solid #E5E7EB; border-radius:10px; padding:9px 10px; font-size:14px; font-family:inherit; }
+  .calif .cal-ok { width:100%; margin-top:8px; border:0; border-radius:12px; background:var(--n); color:#fff; padding:11px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .ped .est-s { border:0; margin:0; border-radius:0; background:transparent; color:#D6D3CB; font-weight:400; padding:2px 3px; }
+  .ped .est-s.on { color:var(--n); }
+  .ped .calif .cal-ok { border:0; color:#fff; background:var(--n); border-radius:12px; padding:11px; }
+  .ped .calif .cal-otro { width:100%; border:1.5px solid var(--n); color:var(--n); background:#fff; border-radius:12px; padding:10px; font-weight:700; margin-top:10px; }
+  .cal-err { color:#B91C1C; font-size:13px; }
+  .cal-err:empty { display:none; }
   /* Llamar y WhatsApp con la otra persona del pedido */
   .contacto { display:flex; align-items:center; gap:8px; background:#fff; border-radius:12px; padding:8px 10px; margin-top:8px; }
   .contacto .av { width:34px; height:34px; border-radius:50%; background:#F1EFE8; display:flex; align-items:center; justify-content:center; font-weight:700; flex:none; }
@@ -1283,9 +1300,13 @@
       var ps = r.data || [];
       var ids = ps.filter(activo).map(function (p) { return p.id; });
       var q = ids.length ? sb.from('codigos_entrega').select('*').in('pedido_id', ids) : Promise.resolve({ data: [] });
-      q.then(function (c) {
-        var cods = {};
+      // Calificaciones de los pedidos entregados (para saber cuales faltan)
+      var ent = ps.filter(function (p) { return p.estado === 'entregado'; }).map(function (p) { return p.id; });
+      var qc = ent.length ? sb.from('calificaciones').select('pedido_id,estrellas_pedido,estrellas_conductor').in('pedido_id', ent) : Promise.resolve({ data: [] });
+      Promise.all([q, qc]).then(function (rr) {
+        var c = rr[0], cods = {};
         (c.data || []).forEach(function (x) { cods[x.pedido_id] = x.codigo; });
+        if (!rr[1].error) (rr[1].data || []).forEach(function (x) { califs[x.pedido_id] = x; });
         pintar(ps, cods);
       });
     });
@@ -1384,6 +1405,8 @@
 
   function pintar(ps, cods) {
     var l = $('lista');
+    // Si esta escribiendo el comentario de la calificacion, no se repinta (perderia lo que escribe)
+    if (document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('cal-t')) return;
     avisarCambios(ps);
     seguir(ps.filter(activo)[0]);
     if (!ps.length) { l.innerHTML = '<div class="vacio">Todavía no tienes pedidos.</div>'; return; }
@@ -1400,7 +1423,7 @@
         (ab ? '<img src="' + esc(ab) + '" alt="Foto de la entrega">' : '') + '</div>' : '';
       return '<div class="ped"><span class="est' + cl + '">' + esc(ETQ[p.estado] || p.estado) + '</span><br><b>' + esc(SNOM[p.servicio] || p.servicio) + '</b> · ' + (p.forma_pago === 'nequi' ? 'Nequi' : 'Efectivo') + ' · ' + fmt(p.precio_cop) +
         '<br>Recoger: ' + esc(p.direccion_recogida) + (p.barrio_recogida ? ', ' + esc(p.barrio_recogida) : '') +
-        '<br>Entregar: ' + esc(p.direccion_entrega) + (p.barrio_entrega ? ', ' + esc(p.barrio_entrega) : '') + cod + can + fot + '</div>';
+        '<br>Entregar: ' + esc(p.direccion_entrega) + (p.barrio_entrega ? ', ' + esc(p.barrio_entrega) : '') + cod + can + fot + califHtml(p) + '</div>';
     }).join('');
     // Celular del conductor: solo mientras el pedido esta en curso (lo decide el servidor)
     ps.filter(function (p) { return activo(p) && p.motero_id && !contactos[p.id]; }).forEach(function (p) {
@@ -1415,6 +1438,61 @@
   }
   var contactos = {};
   var fotosAbiertas = {};   // pedido -> enlace de la foto que el cliente dejo abierta
+
+  // ---------- Calificacion: "¿Cómo te fue?" (pedido y conductor, como en el video) ----------
+  var califs = {};          // pedido -> calificacion guardada
+  var calSel = {};          // pedido -> { p, c, t } lo que va marcando (sobrevive a la actualizacion)
+  function estrellas(pid, cual, n, fijo) {
+    var h = '';
+    for (var k = 1; k <= 5; k++) {
+      h += fijo ? '<span class="est-s' + (k <= n ? ' on' : '') + '">★</span>'
+                : '<button type="button" class="est-s' + (k <= n ? ' on' : '') + '" data-cal="' + pid + '" data-cual="' + cual + '" data-n="' + k + '" aria-label="' + k + ' estrellas">★</button>';
+    }
+    return h;
+  }
+  function califHtml(p) {
+    if (p.estado !== 'entregado' || !p.motero_id) return '';
+    var c = califs[p.id];
+    if (c) return '<div class="calif"><b>Gracias por calificar</b><div class="cal-f"><span>Pedido</span>' + estrellas(p.id, 'p', c.estrellas_pedido, true) + '</div>' +
+      '<div class="cal-f"><span>Conductor</span>' + estrellas(p.id, 'c', c.estrellas_conductor, true) + '</div>' +
+      '<button type="button" class="cal-otro" data-otro="1">Pedir otro mandado</button></div>';
+    // Solo se pide calificar los de los ultimos 7 dias
+    if (Date.now() - new Date(p.actualizado_en || p.creado_en).getTime() > 7 * 86400000) return '';
+    var s = calSel[p.id] || { p: 0, c: 0, t: '' };
+    return '<div class="calif"><b>¿Cómo te fue?</b><small>Califica tu pedido y a tu conductor</small>' +
+      '<div class="cal-f"><span>Pedido</span>' + estrellas(p.id, 'p', s.p) + '</div>' +
+      '<div class="cal-f"><span>Conductor</span>' + estrellas(p.id, 'c', s.c) + '</div>' +
+      ((s.p && s.c) ? '<input type="text" class="cal-t" data-calt="' + p.id + '" maxlength="300" placeholder="Cuéntanos algo (opcional)" value="' + esc(s.t) + '">' +
+        '<button type="button" class="cal-ok" data-calok="' + p.id + '">Enviar calificación</button>' : '') +
+      '<div class="cal-err" id="calerr-' + p.id + '"></div></div>';
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-cal]');
+    if (b) {
+      var pid = b.dataset.cal, s = calSel[pid] || (calSel[pid] = { p: 0, c: 0, t: '' });
+      s[b.dataset.cual] = +b.dataset.n;
+      var caja = b.closest('.calif'), ped = { id: pid, estado: 'entregado', motero_id: 1, creado_en: new Date().toISOString() };
+      if (caja) { var tmp = document.createElement('div'); tmp.innerHTML = califHtml(ped); caja.replaceWith(tmp.firstChild); }
+      return;
+    }
+    if (e.target.closest && e.target.closest('[data-otro]')) { irA('pedir'); window.scrollTo(0, 0); return; }
+    var ok = e.target.closest && e.target.closest('[data-calok]');
+    if (ok) {
+      var id = ok.dataset.calok, s2 = calSel[id];
+      if (!s2 || !s2.p || !s2.c) return;
+      ok.disabled = true; ok.textContent = 'Enviando…';
+      sb.rpc('calificar_pedido', { p_id: id, p_pedido: s2.p, p_conductor: s2.c, p_comentario: s2.t || null }).then(function (r) {
+        var x = r && r.data, er = document.getElementById('calerr-' + id);
+        if (x === 'ok' || x === 'ya') { califs[id] = { pedido_id: id, estrellas_pedido: s2.p, estrellas_conductor: s2.c }; delete calSel[id]; cargarPedidos(); return; }
+        ok.disabled = false; ok.textContent = 'Enviar calificación';
+        if (er) er.textContent = r && r.error ? 'No se pudo enviar. Revisa tu internet.' : 'No se pudo calificar este pedido.';
+      });
+    }
+  });
+  document.addEventListener('input', function (e) {
+    var t = e.target && e.target.dataset && e.target.dataset.calt;
+    if (t && calSel[t]) calSel[t].t = e.target.value;
+  });
   function contactoHtml(c) {
     var n = String(c.celular || '').replace(/\D/g, '');
     if (n.length === 10) n = '57' + n;
