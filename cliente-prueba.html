@@ -81,6 +81,14 @@
   .fila .est { font-size:12px; line-height:1.35; }
   .fila .mapa-txt { font-size:11px; }
   #swap { position:relative; z-index:2; display:flex; align-items:center; justify-content:center; width:30px; height:30px; padding:0; margin:-12px 14px -12px auto; border-radius:50%; font-size:15px; box-shadow:0 1px 3px rgba(0,0,0,.15); }
+  /* Llamar y WhatsApp con la otra persona del pedido */
+  .contacto { display:flex; align-items:center; gap:8px; background:#fff; border-radius:12px; padding:8px 10px; margin-top:8px; }
+  .contacto .av { width:34px; height:34px; border-radius:50%; background:#F1EFE8; display:flex; align-items:center; justify-content:center; font-weight:700; flex:none; }
+  .contacto .ct-n { flex:1; min-width:0; line-height:1.2; }
+  .contacto .ct-n b { display:block; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .contacto .ct-n small { font-size:12px; color:var(--m); }
+  .contacto .ct-b { flex:none; text-decoration:none; font-size:13px; font-weight:700; padding:8px 10px; border-radius:999px; background:#F1EFE8; color:var(--g); }
+  .contacto .ct-b.wa { background:#25D366; color:#fff; }
   .pago { margin-top:14px; }
   .pago p { margin:0 0 2px; font-size:14px; font-weight:600; }
   .cas { display:inline-flex; align-items:center; gap:8px; padding:8px 22px 8px 0; font-size:15px; cursor:pointer; }
@@ -1348,11 +1356,33 @@
       var cl = p.estado === 'entregado' ? ' v' : p.estado === 'cancelado' ? ' r' : '';
       var cod = (activo(p) && cods[p.id]) ? '<div class="cod">Tu código de entrega<b>' + esc(cods[p.id]) + '</b>Dáselo al conductor cuando te entregue.</div>' : '';
       var can = p.estado === 'nuevo' ? '<br><button type="button" data-can="' + p.id + '">Cancelar pedido</button>' : '';
+      var ct = (activo(p) && p.motero_id) ? '<div id="ct-' + p.id + '">' + (contactos[p.id] ? contactoHtml(contactos[p.id]) : '') + '</div>' : '';
+      cod = ct + cod;
       var fot = (p.estado === 'entregado' && p.foto_entrega) ? '<br><button type="button" class="vfoto" data-foto="' + esc(p.foto_entrega) + '" data-id="' + p.id + '">Ver la foto de la entrega</button><div class="fent" id="fent-' + p.id + '"></div>' : '';
       return '<div class="ped"><span class="est' + cl + '">' + esc(ETQ[p.estado] || p.estado) + '</span><br><b>' + esc(SNOM[p.servicio] || p.servicio) + '</b> · ' + (p.forma_pago === 'nequi' ? 'Nequi' : 'Efectivo') + ' · ' + fmt(p.precio_cop) +
         '<br>Recoger: ' + esc(p.direccion_recogida) + (p.barrio_recogida ? ', ' + esc(p.barrio_recogida) : '') +
         '<br>Entregar: ' + esc(p.direccion_entrega) + (p.barrio_entrega ? ', ' + esc(p.barrio_entrega) : '') + cod + can + fot + '</div>';
     }).join('');
+    // Celular del conductor: solo mientras el pedido esta en curso (lo decide el servidor)
+    ps.filter(function (p) { return activo(p) && p.motero_id && !contactos[p.id]; }).forEach(function (p) {
+      sb.rpc('contacto_pedido', { p_id: p.id }).then(function (r) {
+        var c = r && !r.error && r.data && r.data[0];
+        if (!c || !c.celular) return;
+        contactos[p.id] = c;
+        var el = document.getElementById('ct-' + p.id);
+        if (el) el.innerHTML = contactoHtml(c);
+      }, function () {});
+    });
+  }
+  var contactos = {};
+  function contactoHtml(c) {
+    var n = String(c.celular || '').replace(/\D/g, '');
+    if (n.length === 10) n = '57' + n;
+    var msg = encodeURIComponent('Hola, soy tu cliente de Ya te llega.');
+    return '<div class="contacto"><span class="av">' + esc((c.nombre || '?').charAt(0).toUpperCase()) + '</span>' +
+      '<div class="ct-n"><b>' + esc(c.nombre || 'Tu conductor') + '</b><small>Tu conductor</small></div>' +
+      '<a class="ct-b" href="tel:+' + n + '">📞 Llamar</a>' +
+      '<a class="ct-b wa" href="https://wa.me/' + n + '?text=' + msg + '" target="_blank" rel="noopener">WhatsApp</a></div>';
   }
   document.addEventListener('click', function (e) {
     var ft = e.target && e.target.dataset && e.target.dataset.foto;

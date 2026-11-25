@@ -49,6 +49,14 @@
   .pasos span { flex:1; height:6px; border-radius:3px; background:#E5E7EB; }
   .pasos span.ok { background:var(--n); }
   .paso-t { font-size:15px; font-weight:700; color:var(--n); margin-bottom:8px; }
+  /* Llamar y WhatsApp con el cliente */
+  .contacto { display:flex; align-items:center; gap:8px; background:#F9FAFB; border:1px solid #E5E7EB; border-radius:12px; padding:8px 10px; margin-top:10px; }
+  .contacto .av { width:36px; height:36px; border-radius:50%; background:#F1EFE8; display:flex; align-items:center; justify-content:center; font-weight:700; flex:none; }
+  .contacto .ct-n { flex:1; min-width:0; line-height:1.2; }
+  .contacto .ct-n b { display:block; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .contacto .ct-n small { font-size:12px; color:var(--m); }
+  .contacto .ct-b { flex:none; text-decoration:none; font-size:14px; font-weight:700; padding:9px 12px; border-radius:999px; background:#F1EFE8; color:var(--g); }
+  .contacto .ct-b.wa { background:#25D366; color:#fff; }
   /* registro */
   h1 { font-size:22px; margin:0 0 4px; font-weight:700; }
   .sub { font-size:14px; color:var(--m); margin:0 0 14px; }
@@ -316,6 +324,7 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
       <div class="paso-t" id="t-r"></div>
       <h2>Ve a recoger el pedido</h2>
       <div class="fila"><span class="pt" style="background:var(--n)"></span><span><span id="r-dir"></span><span class="refe" id="r-ref"></span></span></div>
+      <div id="r-ct"></div>
       <div class="mapas">
         <a target="_blank" rel="noopener" id="r-waze" href="#">Waze</a>
         <a target="_blank" rel="noopener" id="r-gmaps" href="#">Google Maps</a>
@@ -332,6 +341,7 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
       <div class="paso-t" id="t-e"></div>
       <h2>Ve a entregar el pedido</h2>
       <div class="fila"><span class="pt" style="background:#111827"></span><span><span id="e-dir"></span><span class="refe" id="e-ref"></span></span></div>
+      <div id="e-ct"></div>
       <div class="mapas">
         <a target="_blank" rel="noopener" id="e-waze" href="#">Waze</a>
         <a target="_blank" rel="noopener" id="e-gmaps" href="#">Google Maps</a>
@@ -751,6 +761,7 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
       pintarRef('r-ref', ped.referencia_recogida);
       enlaces('r', ped.direccion_recogida, ped.barrio_recogida, ped.lat_recogida, ped.lng_recogida, ped.calidad_recogida);
       $('r-pago').textContent = textoPago();
+      pintarContacto('r-ct');
       pintarR(); ver('recoger');
     } else if (s === 'recogido' || s === 'en_entrega') {
       prepararEntrega(s === 'recogido' ? 0 : 1);
@@ -813,12 +824,38 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     $('err').textContent = '';
   });
 
+  // Llamar y WhatsApp al cliente: el servidor da su celular solo mientras el pedido esta en curso
+  var contactoDe = {};
+  function pintarContacto(id) {
+    var caja = $(id); if (!caja || !ped) return;
+    var pid = ped.id;
+    function poner(c) {
+      if (!ped || ped.id !== pid) return;
+      var n = String(c.celular || '').replace(/\D/g, '');
+      if (n.length === 10) n = '57' + n;
+      var msg = encodeURIComponent('Hola, soy tu conductor de Ya te llega. Voy con tu pedido.');
+      caja.innerHTML = '<div class="contacto"><span class="av"></span><div class="ct-n"><b></b><small>Cliente</small></div>' +
+        '<a class="ct-b" href="tel:+' + n + '">📞 Llamar</a>' +
+        '<a class="ct-b wa" href="https://wa.me/' + n + '?text=' + msg + '" target="_blank" rel="noopener">WhatsApp</a></div>';
+      caja.querySelector('.av').textContent = (c.nombre || '?').charAt(0).toUpperCase();
+      caja.querySelector('.ct-n b').textContent = c.nombre || 'Cliente';
+    }
+    if (contactoDe[pid]) { poner(contactoDe[pid]); return; }
+    caja.innerHTML = '';
+    sb.rpc('contacto_pedido', { p_id: pid }).then(function (r) {
+      var c = r && !r.error && r.data && r.data[0];
+      if (!c || !c.celular) return;
+      contactoDe[pid] = c; poner(c);
+    }, function () {});
+  }
+
   function prepararEntrega(n) {
     fotoEnt = null; $('foto-ent').value = ''; $('foto-nom').textContent = ''; cerrando = false; limpiarPrev();
     $('e-dir').textContent = dirTxt(ped.direccion_entrega, ped.barrio_entrega);
     pintarRef('e-ref', ped.referencia_entrega);
     enlaces('e', ped.direccion_entrega, ped.barrio_entrega, ped.lat_entrega, ped.lng_entrega, ped.calidad_entrega);
     $('e-pago').textContent = textoPago();
+    pintarContacto('e-ct');
     $('e-conf').classList.toggle('oculto', ped.forma_pago !== 'nequi');
     nconf = false; $('cas').classList.remove('sel'); $('cas').querySelector('.caja').textContent = '';
     $('codigo').value = ''; $('err').textContent = ''; $('e-err').textContent = '';
