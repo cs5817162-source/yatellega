@@ -349,7 +349,8 @@
   var origen = { 1: null, 2: null };        // texto | gps | compartida | mapa
   var gen = { 1: 0, 2: 0 };                 // descarta respuestas viejas
   var meta = { 1: {}, 2: {} };              // mapaTxt, fuente, precision, calidad
-  var sinMapa = { 1: false, 2: false };     // direccion con barrio que el mapa no tiene: se pide igual
+  var sinMapa = { 1: false, 2: false };     // (ya no se usa: siempre se pide un punto para el precio)
+  var noHallada = { 1: false, 2: false };   // la direccion escrita no esta en el mapa
   var tecleo = { 1: 0, 2: 0 };              // cuantas veces escribio en la direccion
   var buscado = { 1: '', 2: '' };           // ultimo texto que se busco
   var GPS_MAX = 50, GPS_APROX = 150;                         // metros: mas que esto no se acepta
@@ -654,9 +655,18 @@
       ops.push(o);
     }
     var cadena = Promise.resolve();
+    // 0. Direcciones que ya encontro un conductor de Ya te llega: van primero y no se busca mas
+    var aprendida = null;
+    function nom(params, g2, i2) { return aprendida ? Promise.resolve([]) : nominatim(params, g2, i2); }
+    cadena = cadena.then(function () {
+      return sb.rpc('buscar_direccion_aprendida', { p_texto: dir }).then(function (r) {
+        var x = r && !r.error && r.data && r.data[0];
+        if (x && coordOk({ lat: x.lat, lng: x.lng })) aprendida = x;
+      }, function () {});
+    });
     // 1. El barrio da la zona donde buscar
     if (bar) cadena = cadena.then(function () {
-      return nominatim('&limit=3&viewbox=' + CALI_CAJA + '&q=' + encodeURIComponent(bar + ', Cali, Valle del Cauca, Colombia'), g, i).then(function (l) {
+      return nom('&limit=3&viewbox=' + CALI_CAJA + '&q=' + encodeURIComponent(bar + ', Cali, Valle del Cauca, Colombia'), g, i).then(function (l) {
         // Primero un barrio; si el mapa no lo tiene como barrio, sirve un sitio con ese nombre
         var b = l.filter(function (x) { return /neighbourhood|suburb|quarter|residential|city_district/.test(x.addresstype || x.type); })[0] || l[0];
         if (b) { centro = { lat: +b.lat, lng: +b.lon }; var d = 0.012; caja = (centro.lng - d) + ',' + (centro.lat + d) + ',' + (centro.lng + d) + ',' + (centro.lat - d); }
@@ -665,7 +675,7 @@
     // 2. La casa exacta, si el mapa la tiene
     cadena = cadena.then(function () {
       var q = (p.completa || p.texto) + (bar ? ', ' + bar : '') + ', Cali, Valle del Cauca, Colombia';
-      return nominatim('&addressdetails=1&limit=5&viewbox=' + CALI_CAJA + '&q=' + encodeURIComponent(q), g, i).then(function (l) {
+      return nom('&addressdetails=1&limit=5&viewbox=' + CALI_CAJA + '&q=' + encodeURIComponent(q), g, i).then(function (l) {
         l.forEach(function (x) {
           var a = x.address || {};
           if (a.house_number && (!p.via || mismaVia(a.road, p.via))) {
@@ -681,12 +691,12 @@
     if (p.via && p.cruce) {
       var A = null;
       cadena = cadena.then(function () {
-        return nominatim('&limit=40&dedupe=0&polygon_geojson=1&viewbox=' + caja + '&q=' + encodeURIComponent(p.via + ', Cali'), g, i).then(function (l) {
+        return nom('&limit=40&dedupe=0&polygon_geojson=1&viewbox=' + caja + '&q=' + encodeURIComponent(p.via + ', Cali'), g, i).then(function (l) {
           A = l.filter(function (x) { return mismaVia(x.name, p.via); });
         });
       }).then(function () {
         if (!A || !A.length) return;
-        return nominatim('&limit=40&dedupe=0&polygon_geojson=1&viewbox=' + caja + '&q=' + encodeURIComponent(p.cruce + ', Cali'), g, i).then(function (l) {
+        return nom('&limit=40&dedupe=0&polygon_geojson=1&viewbox=' + caja + '&q=' + encodeURIComponent(p.cruce + ', Cali'), g, i).then(function (l) {
           var B = l.filter(function (x) { return mismaVia(x.name, p.cruce); });
           var cs = cruces(A, B, centro ? centro.lat : 3.42);
           if (centro) cs.sort(function (x, y) { return L.latLng(x.lat, x.lng).distanceTo([centro.lat, centro.lng]) - L.latLng(y.lat, y.lng).distanceTo([centro.lat, centro.lng]); });
@@ -707,12 +717,21 @@
     }
     return cadena.then(function () {
       if (g !== gen[i]) return;
+      if (aprendida) {
+        aceptar(i, aprendida.lat, aprendida.lng, 'texto', '<b>Dirección encontrada.</b> Un conductor de Ya te llega ya llegó a este sitio.',
+                { calidad: 'aprendida', mapaTxt: aprendida.direccion + (aprendida.barrio ? ', ' + aprendida.barrio : '') });
+        ponerBarrio(i, aprendida.barrio);
+        if (map) map.setView([aprendida.lat, aprendida.lng], 17);
+        return;
+      }
       ops.sort(function (x, y) { return x.nivel - y.nivel; });
       ops = ops.slice(0, 4);
       if (!ops.length) {
-        var NO_MAPA = '<b>Tu dirección todavía no está en nuestro mapa. Puedes pedir igual:</b> el conductor llega con tu dirección escrita y la registramos para tus próximos pedidos.';
+        noHallada[i] = true;
+        var NO_MAPA ='<b>Tu dirección todavía no está en nuestro mapa. Puedes pedir igual:</b> el conductor llega con tu dirección escrita y la registramos para tus próximos pedidos.';
         if (!bar) {
-          estado(i, 'aviso', NO_MAPA + ' Para eso escribe el <b>barrio</b>.');
+          enfocar(i);   // asi el toque en el mapa cae en ESTE punto
+          estado(i, 'aviso', NO_MAPA + ' Para calcular el precio por distancia escribe el <b>barrio</b>, o toca en el mapa más o menos dónde queda.');
           return;
         }
         if (centro) {
@@ -723,11 +742,10 @@
           if (map) map.setView([centro.lat, centro.lng], 15);
           return;
         }
-        // Ni la direccion ni el barrio estan en el mapa: se pide igual, con precio base
-        sinMapa[i] = true;
-        meta[i] = { fuente: 'texto', calidad: 'sin_mapa', mapaTxt: null };
-        estado(i, 'aviso', NO_MAPA + ' El precio queda en la tarifa base.');
-        calcular(); ayuda();
+        // Ni la direccion ni el barrio estan en el mapa: el cliente toca el sitio aproximado,
+        // asi siempre hay distancia y precio. El conductor navega por el texto.
+        enfocar(i);
+        estado(i, 'aviso', NO_MAPA + ' Para calcular el precio por distancia, <b>toca en el mapa más o menos dónde queda</b>.');
         return;
       }
       // La mejor opcion se toma sola: el cliente no tiene que escoger nada
@@ -788,7 +806,10 @@
     // Tocar el mapa fija el punto que esta activo (recogida o entrega)
     map.on('click', function (e) {
       var i = puntoActivo;
-      if (aceptar(i, e.latlng.lat, e.latlng.lng, 'mapa', '<b>Punto marcado en el mapa.</b> Puedes arrastrarlo para afinarlo.', { calidad: 'mapa' })) nombreDe(i, e.latlng);
+      // Si la direccion escrita no estaba en el mapa, el toque es "mas o menos": sirve para el
+      // precio, y el conductor navega por el texto (y al llegar la registra)
+      var aprox = noHallada[i];
+      if (aceptar(i, e.latlng.lat, e.latlng.lng, 'mapa', aprox ? '<b>Listo, ya podemos calcular el precio.</b> El conductor llega con tu dirección escrita y la registramos para tus próximos pedidos.' : '<b>Punto marcado en el mapa.</b> Puedes arrastrarlo para afinarlo.', { calidad: aprox ? 'sin_mapa' : 'mapa' })) nombreDe(i, e.latlng);
     });
     [1, 2].forEach(function (k) { if (pts[k]) ponerMarca(k, pts[k]); });
     setTimeout(function () { map.invalidateSize(); encuadrar(); }, 250);
@@ -1020,14 +1041,14 @@
     [dirInp, barInp].forEach(function (inp) {
       inp.addEventListener('input', function () {
         dirInp.dataset.auto = '';
-        if (inp === dirInp) tecleo[n]++;
+        if (inp === dirInp) { tecleo[n]++; noHallada[n] = false; }
         if (sinMapa[n]) { sinMapa[n] = false; calcular(); }
         // El barrio que puso el mapa era de la direccion anterior: se borra para no buscar en otro lado
         if (inp === dirInp && barInp.dataset.auto === '1') { barInp.value = ''; barInp.dataset.auto = ''; }
         if (inp === barInp) barInp.dataset.auto = '';
         // Si escribe OTRA direccion encima de la que puso el GPS, el punto del GPS ya no vale:
         // se suelta y la direccion nueva se busca en el mapa (no se queda la ubicacion vieja).
-        if (inp === dirInp && origen[n] === 'gps') { anular(n); buscado[n] = ''; estado(n, '', 'Escribiste otra dirección: la busco en el mapa al terminar.'); }
+        if (inp === dirInp && (origen[n] === 'gps' || meta[n].calidad === 'sin_mapa')) { anular(n); buscado[n] = ''; estado(n, '', 'Escribiste otra dirección: la busco en el mapa al terminar.'); }
         // Un punto del GPS, compartido o marcado en el mapa no depende del
         // texto: se conserva. Un punto que salio de BUSCAR el texto se anula.
         if (origen[n] === 'texto') { anular(n); estado(n, '', 'Cambiaste la dirección: búscala de nuevo.'); }
@@ -1144,9 +1165,8 @@
         ubicando = false; $('pedir').disabled = false;
         var sigue = [1, 2].filter(falta)[0];
         if (!sigue) { err.textContent = ''; $('pedir').click(); return; }
-        err.textContent = val('f' + sigue, 'bar')
-          ? 'No pudimos ubicar la dirección de ' + (sigue === 1 ? 'recogida' : 'entrega') + '. Revísala o toca Usar mi ubicación actual.'
-          : 'La dirección de ' + (sigue === 1 ? 'recogida' : 'entrega') + ' no está en nuestro mapa: escribe el barrio y puedes pedir igual.';
+        err.textContent = 'La dirección de ' + (sigue === 1 ? 'recogida' : 'entrega') + ' no está en nuestro mapa. Puedes pedir igual: ' +
+          (val('f' + sigue, 'bar') ? '' : 'escribe el barrio o ') + 'toca en el mapa más o menos dónde queda, para calcular el precio.';
         enfocar(sigue); $('f' + sigue).scrollIntoView({ behavior: 'smooth', block: 'center' });
       });
       return;

@@ -464,6 +464,18 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
   }
   setInterval(reportarPosicion, 10000);
 
+  // Direcciones que no estaban en el mapa: al llegar, el GPS del conductor las registra
+  // para que el proximo cliente las encuentre exactas. Solo con GPS preciso (50 m o menos).
+  var POR_APRENDER = ['barrio', 'calle', 'sin_mapa'];
+  function aprenderAqui(id, tipo, calidad) {
+    if (!id || POR_APRENDER.indexOf(calidad) < 0 || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(function (p) {
+      if (!p || !p.coords || p.coords.accuracy > 50) return;
+      sb.rpc('aprender_direccion', { p_id: id, p_tipo: tipo, p_lat: p.coords.latitude, p_lng: p.coords.longitude })
+        .then(function () {}, function () {});   // si falla, no estorba el pedido
+    }, function () {}, { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 });
+  }
+
   entrar($('auth'), 'Entra como conductor', function (u) { user = u; $('auth').style.display = 'none'; ver('carga'); cargarMotero(); });
   setTimeout(function () { if ($('auth').style.display === 'block') $('v-carga').classList.add('oculto'); }, 800);
 
@@ -832,6 +844,7 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     $('r-err').textContent = '';
     var sig = ['en_camino', 'en_recogida', 'recogido'][fr];
     avanzar(sig, function () {
+      if (sig === 'en_recogida') aprenderAqui(ped.id, 'recogida', ped.calidad_recogida);
       if (fr < 2) { fr++; pintarR(); } else { prepararEntrega(0); }
     }, 'r-err');
   };
@@ -858,6 +871,7 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
       var x = r.data;
       if (x === 'ok') {
         e.textContent = '';
+        aprenderAqui(ped.id, 'entrega', ped.calidad_entrega);
         $('f-gan').textContent = fmt(ped.ganancia_motero_cop);
         $('f-pago').textContent = ped.forma_pago === 'nequi' ? 'Pago por Nequi confirmado.' : 'Pago en efectivo cobrado: ' + fmt(ped.precio_cop) + '.';
         ver('fin');

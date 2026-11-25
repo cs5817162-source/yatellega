@@ -97,6 +97,12 @@ Waze y Google Maps se les manda el punto, no la dirección escrita.
   segundo; el código ya las espacia con `turno()`.
 - Cada punto guarda de dónde salió, la precisión y si el cliente lo
   confirmó (columnas de `pedidos`, script 09).
+- **Dirección que el mapa no tiene:** se pide igual. El punto sale del barrio,
+  de la calle o de un toque del cliente en el mapa (solo para el precio por
+  distancia); `calidad_*` queda en `barrio`, `calle` o `sin_mapa` y el
+  conductor navega por el texto. Al llegar, su GPS la guarda en
+  `direcciones_aprendidas` (script 12) y el próximo cliente la encuentra
+  exacta con `buscar_direccion_aprendida(texto)`. Esa tabla no se lee entera.
 
 ## Para probar sin dañar nada
 
