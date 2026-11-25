@@ -639,6 +639,16 @@
     });
     return mejor;
   }
+  function masCerca(A, B, lat0) {
+    var la = lineas(A), lb = lineas(B), mejor = null;
+    la.forEach(function (p) { for (var x = 0; x < p.length - 1; x++) {
+      lb.forEach(function (q) { for (var y = 0; y < q.length - 1; y++) {
+        var c = cercaTramos(p[x], p[x + 1], q[y], q[y + 1], lat0);
+        if (c && (!mejor || c.d < mejor.d)) mejor = c;
+      } });
+    } });
+    return mejor;
+  }
   function cruces(A, B, lat0) {
     var la = lineas(A), lb = lineas(B), out = [];
     la.forEach(function (p) { for (var x = 0; x < p.length - 1; x++) {
@@ -712,19 +722,36 @@
     // 3. La esquina: "Cra 41D 2 # 55B-63" queda sobre la Cra 41D2, a unos 63 m de la Calle 55B
     if (p.via && p.cruce) {
       var A = null;
+      // El mapa entrega maximo 40 tramos por consulta. En todo Cali una carrera larga
+      // tiene mas, y el tramo del cruce podia quedar por fuera: se piden hasta 3 tandas.
+      var tramos = function (q) {
+        var acc = [], excl = [];
+        function tanda(k) {
+          return nom('&limit=40&dedupe=0&polygon_geojson=1&viewbox=' + caja + (excl.length ? '&exclude_place_ids=' + excl.join(',') : '') +
+                     '&q=' + encodeURIComponent(q + ', Cali'), g, i).then(function (l) {
+            l.forEach(function (x) { acc.push(x); if (x.place_id) excl.push(x.place_id); });
+            if (l.length >= 40 && k < 2 && !centro) return tanda(k + 1);
+            return acc;
+          });
+        }
+        return tanda(0);
+      };
       cadena = cadena.then(function () {
-        return nom('&limit=40&dedupe=0&polygon_geojson=1&viewbox=' + caja + '&q=' + encodeURIComponent(p.via + ', Cali'), g, i).then(function (l) {
+        return tramos(p.via).then(function (l) {
           A = l.filter(function (x) { return mismaVia(x.name, p.via); });
         });
       }).then(function () {
         if (!A || !A.length) return;
-        return nom('&limit=40&dedupe=0&polygon_geojson=1&viewbox=' + caja + '&q=' + encodeURIComponent(p.cruce + ', Cali'), g, i).then(function (l) {
+        return tramos(p.cruce).then(function (l) {
           var B = l.filter(function (x) { return mismaVia(x.name, p.cruce); });
           var cs = cruces(A, B, centro ? centro.lat : 3.42);
+          // Si no se tocan exacto en el mapa, el punto donde las dos calles quedan mas cerca
+          if (!cs.length) { var mc = masCerca(A, B, centro ? centro.lat : 3.42); if (mc && mc.d <= 150) cs = [mc]; }
           if (centro) cs.sort(function (x, y) { return L.latLng(x.lat, x.lng).distanceTo([centro.lat, centro.lng]) - L.latLng(y.lat, y.lng).distanceTo([centro.lat, centro.lng]); });
-          cs.slice(0, 3).forEach(function (c2, k) {
+          // En Cali una direccion queda en un solo barrio: una sola esquina
+          cs.slice(0, 1).forEach(function (c2) {
             agregar({ lat: c2.lat, lng: c2.lng, nivel: 2, calidad: 'aproximada',
-                      titulo: 'Esquina de ' + p.via + ' con ' + p.cruce + (cs.length > 1 ? ' (sector ' + (k + 1) + ')' : ''),
+                      titulo: 'Esquina de ' + p.via + ' con ' + p.cruce,
                       prec: p.metros ? 'Aproximada · la casa queda a unos ' + p.metros + ' m de esta esquina' : 'Esquina' });
           });
           if (!cs.length) {
@@ -794,8 +821,10 @@
         });
       }
       // Decir en que BARRIO quedo cada opcion, para que el cliente reconozca la suya
+      // Al pedir sin barrio escrito, se espera el barrio de la opcion elegida: el conductor lo necesita
+      var primero = null;
       ops.reduce(function (pr, o, k) {
-        return pr.then(function () {
+        var nx = pr.then(function () {
           return barrioDe(o).then(function (b) {
             o.barrio = b;
             if (!b) return;
@@ -808,7 +837,10 @@
             if (el) el.textContent = 'Barrio ' + b;
           });
         });
+        if (k === 0) primero = nx;
+        return nx;
       }, Promise.resolve());
+      if (!bar && primero) return primero;
     }).catch(function (e) {
       if (e === 'viejo' || g !== gen[i]) return;
       buscado[i] = '';
