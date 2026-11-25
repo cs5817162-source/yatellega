@@ -67,6 +67,21 @@ Tablas: `clientes`, `moteros` (= conductores), `pedidos`, `codigos_entrega`,
 - El plan gratis **se pausa** tras ~1 semana sin actividad: entrar a Supabase
   y pulsar «Resume project».
 
+### Finanzas (script 14)
+
+- `libro_comisiones`: se llena sola al quedar un pedido `entregado` (trigger
+  `t_comision`, una por pedido). Comisión = precio − ganancia del conductor.
+- `abonos` y `ajustes_cartera`: solo por funciones de administrador
+  (`registrar_abono`, `anular_abono`, `ajustar_cartera`). Nada se borra.
+- `config_finanzas` (límite general y alerta, vacíos = pendiente) y
+  `limites_moteros`. `tomar_pedido` no deja tomar pedidos nuevos al conductor
+  que llegó a su límite; lo que ya lleva lo termina.
+- `auditoria`: registro de acciones. El panel la muestra en Finanzas.
+- Recaudo electrónico y liquidaciones: pendiente de integración (hoy el
+  conductor cobra todo).
+- `contacto_pedido` (script 13): celular de la otra parte solo con el pedido
+  en curso.
+
 ### Cómo cambiar la base de datos
 
 1. Avisar al dueño y esperar su OK.

@@ -307,6 +307,7 @@ body.mapa #v-recoger .grande, body.mapa #v-entregar .grande { margin-top:8px; }
     </div>
     <div class="gan-fila"><span>Cobraste hoy, en total</span><b id="g-cobro">$0</b></div>
     <div class="gan-fila deuda"><span>De eso, le debes a Ya te llega</span><b id="g-deuda">$0</b></div>
+    <div class="gan-fila deuda" id="g-cartera-f"><span>Le debes en total a Ya te llega<br><small id="g-lim" style="font-weight:400"></small></span><b id="g-cartera">—</b></div>
     <div class="gan-fila"><span>Ganaste en los últimos 7 días</span><b id="g-sem">$0</b></div>
     <h3 class="gan-h">Lo de hoy, uno por uno</h3>
     <div id="g-lista"></div>
@@ -783,6 +784,11 @@ body.mapa #v-recoger .grande, body.mapa #v-entregar .grande { margin-top:8px; }
         sb.from('pedidos').select('*').eq('id', id).single().then(function (q) { ped = q.data; mostrarActivo(); });
       } else {
         saltados[id] = 1; ped = null; $('esp-msg').textContent = 'Otro conductor ya tomó ese pedido.'; ver('espera');
+        // Si no fue otro conductor sino el limite de deuda, se le dice claro
+        sb.rpc('mi_cartera').then(function (c) {
+          var x = c && !c.error && c.data && c.data[0];
+          if (x && x.bloqueado) $('esp-msg').textContent = 'No puedes aceptar pedidos nuevos: llegaste a tu límite de deuda (' + fmt(x.saldo) + ' de ' + fmt(x.limite) + '). Abona a Ya te llega para seguir.';
+        }, function () {});
       }
     });
   };
@@ -1188,10 +1194,40 @@ body.mapa #v-recoger .grande, body.mapa #v-entregar .grande { margin-top:8px; }
       });
   }
 
+  // Deuda total con Ya te llega (comisiones - abonos), segun la base. El conductor solo la ve.
+  function cartera() {
+    sb.rpc('mi_cartera').then(function (r) {
+      var c = r && !r.error && r.data && r.data[0];
+      if (!c) { $('g-cartera').textContent = '—'; $('g-lim').textContent = ''; return; }
+      $('g-cartera').textContent = fmt(c.saldo);
+      $('g-lim').textContent = c.limite == null ? 'Sin límite configurado'
+        : (c.bloqueado ? 'Llegaste a tu límite de ' + fmt(c.limite) + ': abona para seguir recibiendo pedidos'
+                       : 'Tu límite es ' + fmt(c.limite) + (c.pct != null ? ' (vas en ' + c.pct + '%)' : ''));
+    }, function () {});
+  }
+  window.__cartera = cartera;
+
+  // Mientras espera pedidos: aviso si va cerca del limite o ya llego (cada minuto)
+  function avisoLimite() {
+    var esp = $('v-espera');
+    if (!esp || esp.classList.contains('oculto') || document.hidden) return;
+    sb.rpc('mi_cartera').then(function (r) {
+      var x = r && !r.error && r.data && r.data[0], m = $('esp-msg');
+      if (!x || !m) return;
+      if (x.bloqueado) m.textContent = 'Llegaste a tu límite de deuda (' + fmt(x.saldo) + '). No te entran pedidos nuevos hasta que abones a Ya te llega.';
+      else if (x.alerta) m.textContent = 'Vas en ' + x.pct + '% de tu límite de deuda (' + fmt(x.saldo) + ' de ' + fmt(x.limite) + '). Abona pronto para no quedar bloqueado.';
+      else if (/límite de deuda/.test(m.textContent)) m.textContent = '';
+    }, function () {});
+  }
+  setInterval(avisoLimite, 60000);
+  // Y apenas aparece la pantalla de espera
+  if (window.MutationObserver && $('v-espera')) new MutationObserver(function () { if (!$('v-espera').classList.contains('oculto')) setTimeout(avisoLimite, 300); })
+    .observe($('v-espera'), { attributes: true, attributeFilter: ['class'] });
+
   $('menu-gan').addEventListener('click', function () {
     $('menu').classList.add('oculto');
     $('gan').classList.remove('oculto');
-    cargar();
+    cargar(); cartera();
   });
   $('gan-x').addEventListener('click', function () { $('gan').classList.add('oculto'); });
 })();
