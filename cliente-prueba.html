@@ -346,6 +346,7 @@
   var origen = { 1: null, 2: null };        // texto | gps | compartida | mapa
   var gen = { 1: 0, 2: 0 };                 // descarta respuestas viejas
   var meta = { 1: {}, 2: {} };              // mapaTxt, fuente, precision, calidad
+  var tecleo = { 1: 0, 2: 0 };              // cuantas veces escribio en la direccion
   var buscado = { 1: '', 2: '' };           // ultimo texto que se busco
   var GPS_MAX = 50, GPS_APROX = 150;                         // metros: mas que esto no se acepta
 
@@ -862,6 +863,7 @@
     buscandoGps = true;
 
     var mejor = null, reloj = null, corte = null; ultimoErrGps = null;
+    var t0 = tecleo[i];   // si escribe mientras el GPS busca, gana lo que escribio
     if (!/Permitir/.test($('gps-info').textContent)) $('gps-info').textContent = 'Buscando tu ubicación… dale unos segundos, el GPS tarda en enganchar.';
 
     function listo() {
@@ -869,6 +871,7 @@
       clearTimeout(corte);
       buscandoGps = false;
 
+      if (tecleo[i] !== t0) { $('gps-info').innerHTML = ''; return; }
       if (!mejor) {
         estado(i, 'mal', ultimoErrGps === 1
           ? '<b>No diste permiso de ubicación.</b> Toca el <b>candado</b> junto a la dirección de la página → Permisos → Ubicación → <b>Permitir</b>, y vuelve a tocar <b>Usar mi ubicación actual</b>.'
@@ -952,6 +955,7 @@
     [dirInp, barInp].forEach(function (inp) {
       inp.addEventListener('input', function () {
         dirInp.dataset.auto = '';
+        if (inp === dirInp) tecleo[n]++;
         // Si escribe OTRA direccion encima de la que puso el GPS, el punto del GPS ya no vale:
         // se suelta y la direccion nueva se busca en el mapa (no se queda la ubicacion vieja).
         if (inp === dirInp && origen[n] === 'gps') { anular(n); buscado[n] = ''; estado(n, '', 'Escribiste otra dirección: la busco en el mapa al terminar.'); }
