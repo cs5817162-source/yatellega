@@ -55,8 +55,9 @@
   .contacto .ct-n { flex:1; min-width:0; line-height:1.2; }
   .contacto .ct-n b { display:block; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .contacto .ct-n small { font-size:12px; color:var(--m); }
-  .contacto .ct-b { flex:none; text-decoration:none; font-size:14px; font-weight:700; padding:9px 12px; border-radius:999px; background:#F1EFE8; color:var(--g); }
-  .contacto .ct-b.wa { background:#25D366; color:#fff; }
+  .contacto .ct-b { flex:none; width:42px; height:42px; border-radius:50%; background:#F1EFE8; display:flex; align-items:center; justify-content:center; }
+  .contacto .ct-b svg { width:20px; height:20px; fill:none; stroke:var(--g); stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .contacto .ct-b.wa svg { stroke:#25D366; width:22px; height:22px; }
   /* registro */
   h1 { font-size:22px; margin:0 0 4px; font-weight:700; }
   .sub { font-size:14px; color:var(--m); margin:0 0 14px; }
@@ -826,6 +827,9 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
 
   // Llamar y WhatsApp al cliente: el servidor da su celular solo mientras el pedido esta en curso
   var contactoDe = {};
+  var TEL_D = 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z';
+  var ICO_TEL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + TEL_D + '"/></svg>';
+  var ICO_WA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a9.5 9.5 0 0 0-8.2 14.3L2.5 21.5l4.8-1.3A9.5 9.5 0 1 0 12 2.5z"/><path transform="translate(7.4 7.4) scale(.4)" stroke-width="3.6" d="' + TEL_D + '"/></svg>';
   function pintarContacto(id) {
     var caja = $(id); if (!caja || !ped) return;
     var pid = ped.id;
@@ -835,8 +839,8 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
       if (n.length === 10) n = '57' + n;
       var msg = encodeURIComponent('Hola, soy tu conductor de Ya te llega. Voy con tu pedido.');
       caja.innerHTML = '<div class="contacto"><span class="av"></span><div class="ct-n"><b></b><small>Cliente</small></div>' +
-        '<a class="ct-b" href="tel:+' + n + '">📞 Llamar</a>' +
-        '<a class="ct-b wa" href="https://wa.me/' + n + '?text=' + msg + '" target="_blank" rel="noopener">WhatsApp</a></div>';
+        '<a class="ct-b" href="tel:+' + n + '" aria-label="Llamar" title="Llamar">' + ICO_TEL + '</a>' +
+        '<a class="ct-b wa" href="https://wa.me/' + n + '?text=' + msg + '" target="_blank" rel="noopener" aria-label="WhatsApp" title="WhatsApp">' + ICO_WA + '</a></div>';
       caja.querySelector('.av').textContent = (c.nombre || '?').charAt(0).toUpperCase();
       caja.querySelector('.ct-n b').textContent = c.nombre || 'Cliente';
     }

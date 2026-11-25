@@ -87,8 +87,9 @@
   .contacto .ct-n { flex:1; min-width:0; line-height:1.2; }
   .contacto .ct-n b { display:block; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .contacto .ct-n small { font-size:12px; color:var(--m); }
-  .contacto .ct-b { flex:none; text-decoration:none; font-size:13px; font-weight:700; padding:8px 10px; border-radius:999px; background:#F1EFE8; color:var(--g); }
-  .contacto .ct-b.wa { background:#25D366; color:#fff; }
+  .contacto .ct-b { flex:none; width:40px; height:40px; border-radius:50%; background:#F1EFE8; display:flex; align-items:center; justify-content:center; }
+  .contacto .ct-b svg { width:20px; height:20px; fill:none; stroke:var(--g); stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .contacto .ct-b.wa svg { stroke:#25D366; width:22px; height:22px; }
   .pago { margin-top:14px; }
   .pago p { margin:0 0 2px; font-size:14px; font-weight:600; }
   .cas { display:inline-flex; align-items:center; gap:8px; padding:8px 22px 8px 0; font-size:15px; cursor:pointer; }
@@ -1381,9 +1382,12 @@
     var msg = encodeURIComponent('Hola, soy tu cliente de Ya te llega.');
     return '<div class="contacto"><span class="av">' + esc((c.nombre || '?').charAt(0).toUpperCase()) + '</span>' +
       '<div class="ct-n"><b>' + esc(c.nombre || 'Tu conductor') + '</b><small>Tu conductor</small></div>' +
-      '<a class="ct-b" href="tel:+' + n + '">📞 Llamar</a>' +
-      '<a class="ct-b wa" href="https://wa.me/' + n + '?text=' + msg + '" target="_blank" rel="noopener">WhatsApp</a></div>';
+      '<a class="ct-b" href="tel:+' + n + '" aria-label="Llamar" title="Llamar">' + ICO_TEL + '</a>' +
+      '<a class="ct-b wa" href="https://wa.me/' + n + '?text=' + msg + '" target="_blank" rel="noopener" aria-label="WhatsApp" title="WhatsApp">' + ICO_WA + '</a></div>';
   }
+  var TEL_D = 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z';
+  var ICO_TEL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + TEL_D + '"/></svg>';
+  var ICO_WA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a9.5 9.5 0 0 0-8.2 14.3L2.5 21.5l4.8-1.3A9.5 9.5 0 1 0 12 2.5z"/><path transform="translate(7.4 7.4) scale(.4)" stroke-width="3.6" d="' + TEL_D + '"/></svg>';
   document.addEventListener('click', function (e) {
     var ft = e.target && e.target.dataset && e.target.dataset.foto;
     if (ft) {
