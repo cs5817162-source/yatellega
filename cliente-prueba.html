@@ -533,6 +533,8 @@
     return { texto: t, via: via, cruce: tc ? tc + ' ' + numero(m[4]) + sufijo(m[5]) : null,
              metros: m[6] ? parseInt(m[6], 10) : null, completa: via + ' # ' + numero(m[4]) + (m[6] ? '-' + m[6] : '') };
   }
+  // "Avenida Calle 5" y "Calle 5" son la misma via (el mapa suele anteponer Avenida)
+  function mismaVia(a, b) { var x = clave(a), y = clave(b); return !!x && !!y && (x === y || x.slice(-y.length) === y || y.slice(-x.length) === x); }
   function clave(n) { return sinTildes(n).toLowerCase().replace(/\s+/g, ''); }
 
   // ---------- Consultas al mapa, en fila (1 por segundo) ----------
@@ -644,7 +646,7 @@
       return nominatim('&addressdetails=1&limit=5&viewbox=' + CALI_CAJA + '&q=' + encodeURIComponent(q), g, i).then(function (l) {
         l.forEach(function (x) {
           var a = x.address || {};
-          if (a.house_number && (!p.via || clave(a.road) === clave(p.via))) {
+          if (a.house_number && (!p.via || mismaVia(a.road, p.via))) {
             agregar({ lat: +x.lat, lng: +x.lon, nivel: 1, calidad: 'exacta', titulo: [a.road, a.house_number].join(' # ') + (a.neighbourhood ? ', ' + a.neighbourhood : ''), prec: 'Exacta · con número de casa' });
           } else if (!p.via && x.name) {
             // Un sitio conocido (centro comercial, clinica, conjunto)
@@ -658,12 +660,12 @@
       var A = null;
       cadena = cadena.then(function () {
         return nominatim('&limit=40&dedupe=0&polygon_geojson=1&viewbox=' + caja + '&q=' + encodeURIComponent(p.via + ', Cali'), g, i).then(function (l) {
-          A = l.filter(function (x) { return clave(x.name) === clave(p.via); });
+          A = l.filter(function (x) { return mismaVia(x.name, p.via); });
         });
       }).then(function () {
         if (!A || !A.length) return;
         return nominatim('&limit=40&dedupe=0&polygon_geojson=1&viewbox=' + caja + '&q=' + encodeURIComponent(p.cruce + ', Cali'), g, i).then(function (l) {
-          var B = l.filter(function (x) { return clave(x.name) === clave(p.cruce); });
+          var B = l.filter(function (x) { return mismaVia(x.name, p.cruce); });
           var cs = cruces(A, B, centro ? centro.lat : 3.42);
           if (centro) cs.sort(function (x, y) { return L.latLng(x.lat, x.lng).distanceTo([centro.lat, centro.lng]) - L.latLng(y.lat, y.lng).distanceTo([centro.lat, centro.lng]); });
           cs.slice(0, 3).forEach(function (c2, k) {
@@ -950,6 +952,9 @@
     [dirInp, barInp].forEach(function (inp) {
       inp.addEventListener('input', function () {
         dirInp.dataset.auto = '';
+        // Si escribe OTRA direccion encima de la que puso el GPS, el punto del GPS ya no vale:
+        // se suelta y la direccion nueva se busca en el mapa (no se queda la ubicacion vieja).
+        if (inp === dirInp && origen[n] === 'gps') { anular(n); buscado[n] = ''; estado(n, '', 'Escribiste otra dirección: la busco en el mapa al terminar.'); }
         // Un punto del GPS, compartido o marcado en el mapa no depende del
         // texto: se conserva. Un punto que salio de BUSCAR el texto se anula.
         if (origen[n] === 'texto') { anular(n); estado(n, '', 'Cambiaste la dirección: búscala de nuevo.'); }
