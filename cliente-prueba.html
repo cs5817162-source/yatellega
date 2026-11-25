@@ -12,7 +12,7 @@
   html,body { margin:0; height:100%; }
   body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--g); background:#EDEAE0; }
   .app { max-width:460px; margin:0 auto; min-height:100vh; background:#fff; position:relative; display:flex; flex-direction:column; }
-  .mapa { position:relative; height:220px; background:#EDEAE0; flex:none; }
+  .mapa { position:relative; height:260px; background:#EDEAE0; flex:none; }
   #mapa { position:absolute; inset:0; z-index:0; }
   .marca { width:18px; height:18px; border-radius:50%; border:3px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.45); }
   .ayuda { position:absolute; z-index:500; left:50%; bottom:10px; transform:translateX(-50%); background:#111827; color:#fff; border-radius:999px; padding:8px 16px; font-size:13px; font-weight:600; white-space:nowrap; }
@@ -66,6 +66,21 @@
   .pt { width:10px; height:10px; border-radius:50%; margin-top:14px; flex:none; }
   .fila input { width:100%; border:0; outline:0; font-size:15px; padding:6px 0; background:transparent; color:var(--g); font-family:inherit; }
   .fila input + input { border-top:1px solid #EEE; font-size:14px; }
+  /* Cajas de direccion compactas (como las apps de domicilios: una linea por direccion) */
+  .dirs { padding:4px; }
+  .fila { padding:6px 10px; gap:8px; margin-bottom:4px; }
+  .pt { margin-top:22px; }
+  .fila .tit { font-size:11px; margin-bottom:0; }
+  .lin { display:flex; align-items:center; gap:6px; }
+  .lin input.dir { flex:1; min-width:0; }
+  .lin .miub { padding:6px 10px; font-size:12px; background:var(--c); border-radius:999px; white-space:nowrap; }
+  .lin2 { display:flex; border-top:1px solid #EEE; }
+  .lin2 input { font-size:13px !important; padding:6px 0 !important; min-width:0; }
+  .lin2 input + input { border-top:0 !important; border-left:1px solid #EEE; padding-left:8px !important; }
+  .fila .acc { display:none; }
+  .fila .est { font-size:12px; line-height:1.35; }
+  .fila .mapa-txt { font-size:11px; }
+  #swap { position:relative; z-index:2; display:flex; align-items:center; justify-content:center; width:30px; height:30px; padding:0; margin:-12px 14px -12px auto; border-radius:50%; font-size:15px; box-shadow:0 1px 3px rgba(0,0,0,.15); }
   .pago { margin-top:14px; }
   .pago p { margin:0 0 2px; font-size:14px; font-weight:600; }
   .cas { display:inline-flex; align-items:center; gap:8px; padding:8px 22px 8px 0; font-size:15px; cursor:pointer; }
@@ -164,26 +179,24 @@
             <span class="pt" style="background:var(--n)"></span>
             <div style="flex:1">
               <div class="tit">Recogida</div>
-              <input type="text" class="dir" placeholder="¿Dónde lo recogemos? Ej. Cra 41D 2 # 55B-63" autocomplete="off"><div class="sug"></div>
-              <input type="text" class="bar" placeholder="Barrio, ej. Granada" autocomplete="off">
-              <input type="text" class="comp" placeholder="Apto, torre, casa o conjunto (opcional)" autocomplete="off">
+              <div class="lin"><input type="text" class="dir" placeholder="¿Dónde lo recogemos? Ej. Cra 41D 2 # 55B-63" autocomplete="off"><button class="miub" data-i="1" type="button" title="Usar mi ubicación actual">📍 Mi ubicación</button></div><div class="sug"></div>
+              <div class="lin2"><input type="text" class="bar" placeholder="Barrio, ej. Granada" autocomplete="off"><input type="text" class="comp" placeholder="Apto, casa (opcional)" autocomplete="off"></div>
               <input type="text" class="ref" placeholder="Indicaciones: color del portón, qué hay al lado" autocomplete="off">
-              <div class="acc"><button class="miub" data-i="1" type="button">Usar mi ubicación actual</button><button class="buscar" type="button">Buscar en el mapa</button><button class="pegar" type="button">Pegar ubicación compartida</button></div>
+              <div class="acc"><button class="buscar" type="button">Buscar en el mapa</button><button class="pegar" type="button">Pegar ubicación compartida</button></div>
               <input type="text" class="link" placeholder="Pega aquí el enlace de WhatsApp o Google Maps" autocomplete="off">
               <div class="est"></div>
               <div class="mapa-txt"></div>
             </div>
           </div>
-          <button type="button" id="swap">⇅ Intercambiar recogida y entrega</button>
+          <button type="button" id="swap" title="Intercambiar recogida y entrega" aria-label="Intercambiar recogida y entrega">⇅</button>
           <div class="fila" id="f2">
             <span class="pt" style="background:var(--g)"></span>
             <div style="flex:1">
               <div class="tit">Entrega</div>
-              <input type="text" class="dir" placeholder="¿Dónde lo entregamos? Ej. Calle 5 # 38-10" autocomplete="off"><div class="sug"></div>
-              <input type="text" class="bar" placeholder="Barrio, ej. San Fernando" autocomplete="off">
-              <input type="text" class="comp" placeholder="Apto, torre, casa o conjunto (opcional)" autocomplete="off">
+              <div class="lin"><input type="text" class="dir" placeholder="¿Dónde lo entregamos? Ej. Calle 5 # 38-10" autocomplete="off"><button class="miub" data-i="2" type="button" title="Usar mi ubicación actual">📍 Mi ubicación</button></div><div class="sug"></div>
+              <div class="lin2"><input type="text" class="bar" placeholder="Barrio, ej. San Fernando" autocomplete="off"><input type="text" class="comp" placeholder="Apto, casa (opcional)" autocomplete="off"></div>
               <input type="text" class="ref" placeholder="Indicaciones: color del portón, qué hay al lado" autocomplete="off">
-              <div class="acc"><button class="miub" data-i="2" type="button">Usar mi ubicación actual</button><button class="buscar" type="button">Buscar en el mapa</button><button class="pegar" type="button">Pegar ubicación compartida</button></div>
+              <div class="acc"><button class="buscar" type="button">Buscar en el mapa</button><button class="pegar" type="button">Pegar ubicación compartida</button></div>
               <input type="text" class="link" placeholder="Pega aquí el enlace de WhatsApp o Google Maps" autocomplete="off">
               <div class="est"></div>
               <div class="mapa-txt"></div>
@@ -515,7 +528,7 @@
   }
   function usarCompartida(i, c) {
     if (c.corto) {
-      estado(i, 'mal', 'Ese enlace corto no se puede leer desde aquí. Ábrelo en Google Maps, toca <b>Compartir</b> y copia el enlace completo, o usa <b>Usar mi ubicación actual</b>.');
+      estado(i, 'mal', 'Ese enlace corto no se puede leer desde aquí. Ábrelo en Google Maps, toca <b>Compartir</b> y copia el enlace completo, o usa <b>📍 Mi ubicación</b>.');
       return;
     }
     if (aceptar(i, c.lat, c.lng, 'compartida', '<b>Ubicación compartida recibida.</b>', { calidad: 'compartida' })) nombreDe(i, L.latLng(c.lat, c.lng));
@@ -752,7 +765,7 @@
       var o0 = ops[0];
       aceptar(i, o0.lat, o0.lng, 'texto', o0.nivel === 1 ? '<b>Dirección ubicada en el mapa.</b>' :
           o0.calidad === 'calle' ? '<b>Ubicamos la calle, pero no el número.</b> Puedes pedir igual: el conductor busca tu dirección escrita y la registramos para tus próximos pedidos. Si quieres más precisión, toca el mapa donde queda.' :
-          '<b>Dirección ubicada</b> (cerca de la esquina). Si no quedó en la puerta, usa <b>Usar mi ubicación actual</b> o arrastra el marcador.', { calidad: o0.calidad, mapaTxt: o0.titulo });
+          '<b>Dirección ubicada</b> (cerca de la esquina). Si no quedó en la puerta, usa <b>📍 Mi ubicación</b> o arrastra el marcador.', { calidad: o0.calidad, mapaTxt: o0.titulo });
       if (o0.calidad === 'calle') $('f' + i).querySelector('.est').className = 'est aviso';
       if (map) map.setView([o0.lat, o0.lng], 17);
       var gA = gen[i];
@@ -934,7 +947,7 @@
     if (navigator.permissions && navigator.permissions.query) {
       navigator.permissions.query({ name: 'geolocation' }).then(function (st) {
         if (st.state === 'denied') {
-          estado(i, 'mal', '<b>La ubicación está bloqueada para esta app.</b> Para activarla: toca el <b>candado</b> (o los 3 puntos) junto a la dirección de la página → <b>Permisos</b> → <b>Ubicación</b> → <b>Permitir</b>. Si instalaste la app: Ajustes del celular → Aplicaciones → Chrome → Permisos → Ubicación → Permitir. Luego vuelve a tocar <b>Usar mi ubicación actual</b>.');
+          estado(i, 'mal', '<b>La ubicación está bloqueada para esta app.</b> Para activarla: toca el <b>candado</b> (o los 3 puntos) junto a la dirección de la página → <b>Permisos</b> → <b>Ubicación</b> → <b>Permitir</b>. Si instalaste la app: Ajustes del celular → Aplicaciones → Chrome → Permisos → Ubicación → Permitir. Luego vuelve a tocar <b>📍 Mi ubicación</b>.');
           $('gps-info').innerHTML = '';
           return;
         }
@@ -960,9 +973,9 @@
       if (tecleo[i] !== t0) { $('gps-info').innerHTML = ''; return; }
       if (!mejor) {
         estado(i, 'mal', ultimoErrGps === 1
-          ? '<b>No diste permiso de ubicación.</b> Toca el <b>candado</b> junto a la dirección de la página → Permisos → Ubicación → <b>Permitir</b>, y vuelve a tocar <b>Usar mi ubicación actual</b>.'
+          ? '<b>No diste permiso de ubicación.</b> Toca el <b>candado</b> junto a la dirección de la página → Permisos → Ubicación → <b>Permitir</b>, y vuelve a tocar <b>📍 Mi ubicación</b>.'
           : ultimoErrGps === 2
-          ? '<b>La ubicación (GPS) del celular está apagada.</b> Enciéndela en la barra de arriba del celular y vuelve a tocar <b>Usar mi ubicación actual</b>.'
+          ? '<b>La ubicación (GPS) del celular está apagada.</b> Enciéndela en la barra de arriba del celular y vuelve a tocar <b>📍 Mi ubicación</b>.'
           : '<b>No pudimos tomar tu ubicación.</b> Revisa que el GPS esté encendido y vuelve a intentar, o escribe la dirección.');
         $('gps-info').innerHTML = ultimoErrGps === 1 ? '' : AYUDA_GPS.replace('<br><br>', '');
         return;
@@ -986,7 +999,7 @@
           $('gps-info').innerHTML = '';
         }
       } else {
-        estado(i, 'mal', 'El GPS solo dio <b>' + m + ' metros</b> de precisión: así el conductor podría llegar a otra cuadra. Toca otra vez <b>Usar mi ubicación actual</b>, o toca el mapa donde estás.');
+        estado(i, 'mal', 'El GPS solo dio <b>' + m + ' metros</b> de precisión: así el conductor podría llegar a otra cuadra. Toca otra vez <b>📍 Mi ubicación</b>, o toca el mapa donde estás.');
         $('gps-info').innerHTML = '<b>El GPS no está preciso todavía.</b>' + AYUDA_GPS;
       }
     }
