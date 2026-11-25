@@ -1391,7 +1391,11 @@
       var can = p.estado === 'nuevo' ? '<br><button type="button" data-can="' + p.id + '">Cancelar pedido</button>' : '';
       var ct = (activo(p) && p.motero_id) ? '<div id="ct-' + p.id + '">' + (contactos[p.id] ? contactoHtml(contactos[p.id]) : '') + '</div>' : '';
       cod = ct + cod;
-      var fot = (p.estado === 'entregado' && p.foto_entrega) ? '<br><button type="button" class="vfoto" data-foto="' + esc(p.foto_entrega) + '" data-id="' + p.id + '">Ver la foto de la entrega</button><div class="fent" id="fent-' + p.id + '"></div>' : '';
+      // La foto abierta se vuelve a pintar en cada actualizacion: solo se cierra si el cliente la cierra
+      var ab = fotosAbiertas[p.id];
+      var fot = (p.estado === 'entregado' && p.foto_entrega) ? '<br><button type="button" class="vfoto" data-foto="' + esc(p.foto_entrega) + '" data-id="' + p.id + '">' +
+        (ab ? 'Cerrar la foto' : 'Ver la foto de la entrega') + '</button><div class="fent" id="fent-' + p.id + '">' +
+        (ab ? '<img src="' + esc(ab) + '" alt="Foto de la entrega">' : '') + '</div>' : '';
       return '<div class="ped"><span class="est' + cl + '">' + esc(ETQ[p.estado] || p.estado) + '</span><br><b>' + esc(SNOM[p.servicio] || p.servicio) + '</b> · ' + (p.forma_pago === 'nequi' ? 'Nequi' : 'Efectivo') + ' · ' + fmt(p.precio_cop) +
         '<br>Recoger: ' + esc(p.direccion_recogida) + (p.barrio_recogida ? ', ' + esc(p.barrio_recogida) : '') +
         '<br>Entregar: ' + esc(p.direccion_entrega) + (p.barrio_entrega ? ', ' + esc(p.barrio_entrega) : '') + cod + can + fot + '</div>';
@@ -1408,6 +1412,7 @@
     });
   }
   var contactos = {};
+  var fotosAbiertas = {};   // pedido -> enlace de la foto que el cliente dejo abierta
   function contactoHtml(c) {
     var n = String(c.celular || '').replace(/\D/g, '');
     if (n.length === 10) n = '57' + n;
@@ -1423,12 +1428,18 @@
   document.addEventListener('click', function (e) {
     var ft = e.target && e.target.dataset && e.target.dataset.foto;
     if (ft) {
-      var caja = document.getElementById('fent-' + e.target.dataset.id);
-      if (caja.firstChild) { caja.innerHTML = ''; return; }          // segundo toque: la cierra
+      var pid = e.target.dataset.id, bt = e.target;
+      var caja = document.getElementById('fent-' + pid);
+      if (fotosAbiertas[pid]) {                                      // segundo toque: la cierra
+        delete fotosAbiertas[pid]; caja.innerHTML = ''; bt.textContent = 'Ver la foto de la entrega'; return;
+      }
       caja.textContent = 'Abriendo la foto…';
       sb.storage.from('documentos').createSignedUrl(ft, 3600).then(function (r) {
-        if (r.error || !r.data) { caja.textContent = 'No se pudo abrir la foto. Inténtalo de nuevo.'; return; }
-        caja.innerHTML = '<img src="' + r.data.signedUrl + '" alt="Foto de la entrega">';
+        var c2 = document.getElementById('fent-' + pid);              // la lista pudo pintarse de nuevo
+        if (r.error || !r.data) { if (c2) c2.textContent = 'No se pudo abrir la foto. Inténtalo de nuevo.'; return; }
+        fotosAbiertas[pid] = r.data.signedUrl;
+        if (c2) c2.innerHTML = '<img src="' + esc(r.data.signedUrl) + '" alt="Foto de la entrega">';
+        var b2 = document.querySelector('.vfoto[data-id="' + pid + '"]'); if (b2) b2.textContent = 'Cerrar la foto';
       });
       return;
     }
