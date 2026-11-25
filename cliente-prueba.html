@@ -462,7 +462,7 @@
       var dir = campo(i, 'dir'), bar = campo(i, 'bar');
       // Si la direccion la puso el mapa (no el cliente), el barrio tambien se actualiza
       var auto = !dir.value.trim() || dir.dataset.auto === '1';
-      if (barrio && (auto || !bar.value.trim())) bar.value = barrio;
+      if (barrio && (auto || !bar.value.trim() || bar.dataset.auto === '1')) { bar.value = barrio; bar.dataset.auto = '1'; }
       if (auto && via) { dir.value = via; dir.dataset.auto = '1'; buscado[i] = dir.value.trim() + '|' + bar.value.trim(); }
       if (dir.dataset.auto === '1') {
         estado(i, 'ok', $('f' + i).querySelector('.est').innerHTML.split('<br>')[0] +
@@ -480,6 +480,23 @@
         });
       }
     }).catch(function () {});
+  }
+
+  // Barrio de un punto (para mostrarlo; no mueve el punto)
+  function barrioDe(ll) {
+    return turno().then(function () {
+      return fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=16&addressdetails=1&accept-language=es&lat=' + ll.lat + '&lon=' + ll.lng);
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      var a = (d && d.address) || {};
+      return a.neighbourhood || a.suburb || a.quarter || a.city_district || '';
+    }).catch(function () { return ''; });
+  }
+  // Si el cliente no escribio barrio, se llena con el que dio el mapa (lo puede corregir)
+  function ponerBarrio(i, b) {
+    var bar = campo(i, 'bar');
+    if (!b || (bar.value.trim() && bar.dataset.auto !== '1')) return;
+    bar.value = b; bar.dataset.auto = '1';
+    buscado[i] = campo(i, 'dir').value.trim() + '|' + b;
   }
 
   // ---------- Ubicacion compartida: enlace o coordenadas ----------
@@ -697,19 +714,38 @@
       aceptar(i, o0.lat, o0.lng, 'texto', o0.nivel === 1 ? '<b>Dirección ubicada en el mapa.</b>' :
           '<b>Dirección ubicada</b> (cerca de la esquina). Si no quedó en la puerta, usa <b>Usar mi ubicación actual</b> o arrastra el marcador.', { calidad: o0.calidad, mapaTxt: o0.titulo });
       if (map) map.setView([o0.lat, o0.lng], 17);
-      if (ops.length < 2) return;
-      opciones(i, '<div class="res-t">¿No es ahí? Toca otra:</div>' + ops.slice(1).map(function (o, k) {
-        return '<button type="button" class="op" data-k="' + (k + 1) + '"><b>' + esc(o.titulo) + '</b><small class="' + (o.nivel === 1 ? 'p-ok' : 'p-ap') + '">' + esc(o.prec) + '</small></button>';
-      }).join(''));
-      $('f' + i).querySelectorAll('.sug .op').forEach(function (b) {
-        b.addEventListener('click', function () {
-          var o = ops[+b.dataset.k];
-          if (aceptar(i, o.lat, o.lng, 'texto', o.nivel === 1 ? '<b>Dirección encontrada.</b>' :
-              '<b>Punto aproximado.</b> Si no quedó en la puerta, <b>arrastra el marcador</b> en el mapa.', { calidad: o.calidad, mapaTxt: o.titulo })) {
-            if (map) map.setView([o.lat, o.lng], 17);
-          }
+      var gA = gen[i];
+      if (ops.length > 1) {
+        opciones(i, '<div class="res-t">¿No es ahí? Toca otra:</div>' + ops.slice(1).map(function (o, k) {
+          return '<button type="button" class="op" data-k="' + (k + 1) + '"><b>' + esc(o.titulo) + '</b><small class="barrio-op"></small><small class="' + (o.nivel === 1 ? 'p-ok' : 'p-ap') + '">' + esc(o.prec) + '</small></button>';
+        }).join(''));
+        $('f' + i).querySelectorAll('.sug .op').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var o = ops[+b.dataset.k];
+            if (aceptar(i, o.lat, o.lng, 'texto', o.nivel === 1 ? '<b>Dirección encontrada.</b>' :
+                '<b>Punto aproximado.</b> Si no quedó en la puerta, <b>arrastra el marcador</b> en el mapa.', { calidad: o.calidad, mapaTxt: o.titulo + (o.barrio ? ', ' + o.barrio : '') })) {
+              if (map) map.setView([o.lat, o.lng], 17);
+              ponerBarrio(i, o.barrio);
+            }
+          });
         });
-      });
+      }
+      // Decir en que BARRIO quedo cada opcion, para que el cliente reconozca la suya
+      ops.reduce(function (pr, o, k) {
+        return pr.then(function () {
+          return barrioDe(o).then(function (b) {
+            o.barrio = b;
+            if (!b) return;
+            if (k === 0 && gen[i] === gA) {
+              if (meta[i].mapaTxt && meta[i].mapaTxt.indexOf(b) < 0) meta[i].mapaTxt += ', ' + b;
+              mapaTxt(i);
+              ponerBarrio(i, b);
+            }
+            var el = $('f' + i).querySelector('.sug .op[data-k="' + k + '"] .barrio-op');
+            if (el) el.textContent = 'Barrio ' + b;
+          });
+        });
+      }, Promise.resolve());
     }).catch(function (e) {
       if (e === 'viejo' || g !== gen[i]) return;
       buscado[i] = '';
@@ -956,6 +992,9 @@
       inp.addEventListener('input', function () {
         dirInp.dataset.auto = '';
         if (inp === dirInp) tecleo[n]++;
+        // El barrio que puso el mapa era de la direccion anterior: se borra para no buscar en otro lado
+        if (inp === dirInp && barInp.dataset.auto === '1') { barInp.value = ''; barInp.dataset.auto = ''; }
+        if (inp === barInp) barInp.dataset.auto = '';
         // Si escribe OTRA direccion encima de la que puso el GPS, el punto del GPS ya no vale:
         // se suelta y la direccion nueva se busca en el mapa (no se queda la ubicacion vieja).
         if (inp === dirInp && origen[n] === 'gps') { anular(n); buscado[n] = ''; estado(n, '', 'Escribiste otra dirección: la busco en el mapa al terminar.'); }
