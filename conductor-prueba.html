@@ -134,6 +134,32 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
 .gan-it .t { display:flex; justify-content:space-between; gap:10px; font-weight:700; }
 .gan-it .s { color:#6B7280; font-size:14px; }
 .gan-vacio { color:#6B7280; text-align:center; padding:24px 0; font-size:15px; }
+/* Pedido en curso: hoja compacta sobre el mapa, con la ruta detras (como las apps grandes) */
+body.mapa #v-recoger, body.mapa #v-entregar { position:fixed; left:0; right:0; bottom:0; z-index:6; max-width:460px; margin:0 auto; background:#fff; border-radius:28px 28px 0 0; padding:12px 18px calc(14px + env(safe-area-inset-bottom)); box-shadow:0 -6px 24px rgba(0,0,0,.18); max-height:72vh; overflow-y:auto; }
+body.mapa #v-recoger .tarj, body.mapa #v-entregar .tarj { border:0; background:transparent; padding:0; margin-bottom:4px; }
+body.mapa #v-recoger .pasos, body.mapa #v-entregar .pasos { margin-bottom:10px; }
+body.mapa .paso-t { font-size:13px; color:#6B7280; font-weight:600; margin-bottom:2px; }
+body.mapa #v-recoger h2, body.mapa #v-entregar h2 { font-size:21px; margin:0 0 2px; }
+.hoja-sub { font-size:14px; color:#6B7280; margin:0 0 4px; }
+.hoja-sub b { color:#1F2937; }
+body.mapa #v-recoger .fila, body.mapa #v-entregar .fila { font-size:15px; border-top:1px solid #F1F1F1; padding-top:10px; margin:10px 0 0; }
+.mapas { grid-template-columns:1fr 1fr; }
+.mapas a { border:0; background:#111827; color:#fff; border-radius:14px; padding:13px 8px; font-size:15px; display:flex; align-items:center; justify-content:center; gap:6px; }
+.mapas a + a { background:#F3F4F6; color:#1F2937; }
+.mapas a svg { width:16px; height:16px; flex:none; }
+.det { margin-top:10px; border-top:1px solid #F1F1F1; padding-top:4px; }
+.det summary { list-style:none; display:flex; justify-content:space-between; align-items:center; font-size:15px; font-weight:600; color:#374151; padding:8px 0; cursor:pointer; }
+.det summary::-webkit-details-marker { display:none; }
+.det summary::after { content:'⌄'; font-size:20px; line-height:1; color:#6B7280; }
+.det[open] summary::after { content:'⌃'; }
+.det .pago { margin-top:4px; font-size:15px; }
+.det .luego { font-size:14px; color:#4B5563; margin-top:8px; line-height:1.4; }
+body.mapa #v-recoger .grande, body.mapa #v-entregar .grande { margin-top:8px; }
+/* Oferta: la ganancia grande arriba y los segundos que quedan */
+.o-gan { display:flex; align-items:baseline; gap:8px; margin:2px 0 6px; }
+.o-gan b { font-size:34px; font-weight:800; }
+.o-gan small { font-size:14px; color:#6B7280; }
+.o-seg { font-size:12px; color:#6B7280; margin-top:4px; }
 </style></head>
 <body>
 <div class="app">
@@ -307,13 +333,13 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
 
   <div id="v-oferta" class="oculto">
     <div class="tarj dest">
-      <h2>Pedido nuevo</h2>
+      <h2>Pedido nuevo · <span id="o-serv"></span></h2>
+      <div class="tiempo"><div id="barra"></div></div>
+      <div class="o-seg" id="o-seg"></div>
+      <div class="o-gan"><b id="o-gan"></b><small>tu ganancia</small></div>
       <div class="fila"><span class="pt" style="background:var(--n)"></span><span><b id="o-acerca">Recoger</b><br><span id="o-rec"></span></span></div>
       <div class="fila"><span class="pt" style="background:#111827"></span><span><b id="o-viaje">Entregar</b><br><span id="o-ent"></span></span></div>
-      <div class="fila"><span id="o-serv"></span></div>
       <div class="pago" id="o-pago"></div>
-      <div style="margin-top:10px">Tu ganancia: <span class="gan" id="o-gan"></span></div>
-      <div class="tiempo"><div id="barra"></div></div>
     </div>
     <button class="grande p" id="aceptar" type="button">Aceptar</button>
     <button class="grande s" id="rechazar" type="button">Rechazar</button>
@@ -324,13 +350,17 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     <div class="tarj dest">
       <div class="paso-t" id="t-r"></div>
       <h2>Ve a recoger el pedido</h2>
-      <div class="fila"><span class="pt" style="background:var(--n)"></span><span><span id="r-dir"></span><span class="refe" id="r-ref"></span></span></div>
+      <div class="hoja-sub" id="r-sub"></div>
       <div id="r-ct"></div>
+      <div class="fila"><span class="pt" style="background:var(--n)"></span><span><span id="r-dir"></span><span class="refe" id="r-ref"></span></span></div>
       <div class="mapas">
-        <a target="_blank" rel="noopener" id="r-waze" href="#">Waze</a>
-        <a target="_blank" rel="noopener" id="r-gmaps" href="#">Google Maps</a>
+        <a target="_blank" rel="noopener" id="r-waze" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l18-8-8 18-2-8z"/></svg>Waze</a>
+        <a target="_blank" rel="noopener" id="r-gmaps" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l18-8-8 18-2-8z"/></svg>Google Maps</a>
       </div>
-      <div class="pago" id="r-pago"></div>
+      <details class="det"><summary>Detalles</summary>
+        <div class="pago" id="r-pago"></div>
+        <div class="luego" id="r-luego"></div>
+      </details>
     </div>
     <button class="grande p" id="recogi" type="button">Estoy en camino</button>
     <div class="err" id="r-err" role="alert"></div>
@@ -341,11 +371,12 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     <div class="tarj dest">
       <div class="paso-t" id="t-e"></div>
       <h2>Ve a entregar el pedido</h2>
-      <div class="fila"><span class="pt" style="background:#111827"></span><span><span id="e-dir"></span><span class="refe" id="e-ref"></span></span></div>
+      <div class="hoja-sub" id="e-sub"></div>
       <div id="e-ct"></div>
+      <div class="fila"><span class="pt" style="background:#111827"></span><span><span id="e-dir"></span><span class="refe" id="e-ref"></span></span></div>
       <div class="mapas">
-        <a target="_blank" rel="noopener" id="e-waze" href="#">Waze</a>
-        <a target="_blank" rel="noopener" id="e-gmaps" href="#">Google Maps</a>
+        <a target="_blank" rel="noopener" id="e-waze" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l18-8-8 18-2-8z"/></svg>Waze</a>
+        <a target="_blank" rel="noopener" id="e-gmaps" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l18-8-8 18-2-8z"/></svg>Google Maps</a>
       </div>
     </div>
     <div class="tarj oculto" id="al-llegar">
@@ -395,7 +426,7 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     $('estado').classList.toggle('on', conectado);
     $('est-t').textContent = conectado ? 'Conectado' : 'Desconectado';
     $('estado').style.display = (v === 'carga' || v === 'reg' || v === 'rev') ? 'none' : 'flex';
-    if (window.__mapa) window.__mapa(v === 'off' || v === 'espera' || v === 'oferta', conectado);
+    if (window.__mapa) window.__mapa(['off', 'espera', 'oferta', 'recoger', 'entregar'].indexOf(v) >= 0, conectado);
     if (v !== 'oferta' && window.__ruta) window.__ruta(null);
   }
   function textoPago() {
@@ -734,9 +765,11 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     // el conductor va manejando y no esta mirando la pantalla.
     alertaRepetida(true);
     var t = 30; $('barra').style.width = '100%';
+    $('o-seg').textContent = t + ' segundos para responder';
     clearInterval(tmr);
     tmr = setInterval(function () {
       t--; $('barra').style.width = (t / 30 * 100) + '%';
+      $('o-seg').textContent = Math.max(0, t) + ' segundos para responder';
       if (t <= 0) { clearInterval(tmr); alertaRepetida(false); saltados[p.id] = 1; ped = null; ver('espera'); }
     }, 1000);
   }
@@ -762,8 +795,11 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
       pintarRef('r-ref', ped.referencia_recogida);
       enlaces('r', ped.direccion_recogida, ped.barrio_recogida, ped.lat_recogida, ped.lng_recogida, ped.calidad_recogida);
       $('r-pago').textContent = textoPago();
+      $('r-sub').innerHTML = subTxt();
+      $('r-luego').textContent = 'Después lo entregas en: ' + dirTxt(ped.direccion_entrega, ped.barrio_entrega);
       pintarContacto('r-ct');
       pintarR(); ver('recoger');
+      verDestino(puntoDe(ped, 'recogida'), '#E8590C');
     } else if (s === 'recogido' || s === 'en_entrega') {
       prepararEntrega(s === 'recogido' ? 0 : 1);
     } else { ped = null; ver(mot.conectado ? 'espera' : 'off'); }
@@ -863,7 +899,18 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     $('e-conf').classList.toggle('oculto', ped.forma_pago !== 'nequi');
     nconf = false; $('cas').classList.remove('sel'); $('cas').querySelector('.caja').textContent = '';
     $('codigo').value = ''; $('err').textContent = ''; $('e-err').textContent = '';
+    $('e-sub').innerHTML = subTxt();
     fe = n; pintarE(); ver('entregar');
+    verDestino(puntoDe(ped, 'entrega'), '#111827');
+  }
+  // "Ganas $7.700 · cobra $9.500 en efectivo": lo que mas le importa, en una linea
+  function subTxt() {
+    return 'Ganas <b>' + fmt(ped.ganancia_motero_cop) + '</b> · ' +
+      (ped.forma_pago === 'nequi' ? 'pago por Nequi' : 'cobra <b>' + fmt(ped.precio_cop) + '</b> en efectivo');
+  }
+  // Ruta en el mapa desde donde va el conductor hasta su proxima parada
+  function verDestino(p, color) {
+    if (window.__destino) setTimeout(function () { window.__destino(p, color); }, 150);
   }
   function pintarE() {
     var t = ['Paso 1 de 3: ya tienes el pedido', 'Paso 2 de 3: ya vas en camino a entregar', 'Paso 3 de 3: estás en el punto de entrega'];
@@ -983,7 +1030,11 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     if (!navigator.geolocation) { aviso('Este celular no permite ver tu ubicación.'); return; }
     watch = navigator.geolocation.watchPosition(function (p) {
       pos = [p.coords.latitude, p.coords.longitude];
-      if (!marker) { marker = L.marker(pos, { icon: icono(), interactive: false, keyboard: false }).addTo(map); map.setView(pos, 16); }
+      if (!marker) {
+        marker = L.marker(pos, { icon: icono(), interactive: false, keyboard: false }).addTo(map);
+        if (seguir) map.setView(pos, 16);
+        if (ultDest) window.__destino(ultDest[0], ultDest[1]);   // ya hay GPS: dibujar el camino
+      }
       else marker.setLatLng(pos);
       if (seguir) map.panTo(pos);
       $('aviso').style.display = 'none';
@@ -1025,7 +1076,9 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     }).catch(function () { /* se queda la linea recta */ });
   }
 
+  var ultDest = null;
   window.__ruta = function (yo, rec, ent) {
+    ultDest = null;
     if (capaRuta) { map.removeLayer(capaRuta); capaRuta = null; }
     if (!map || !rec) return;
     capaRuta = L.layerGroup().addTo(map);
@@ -1039,6 +1092,19 @@ body.mapa #v-oferta .tarj { border:0; background:transparent; padding:0; margin-
     var todos = [rec]; if (ent) todos.push(ent); if (yo) todos.push(yo);
     seguir = false;
     map.fitBounds(L.latLngBounds(todos), { paddingTopLeft: [40, 90], paddingBottomRight: [40, 320], maxZoom: 16 });
+  };
+
+  // Pedido en curso: solo la proxima parada (recogida o entrega) y el camino hasta ella
+  window.__destino = function (dest, color) {
+    if (capaRuta && map) { map.removeLayer(capaRuta); capaRuta = null; }
+    ultDest = dest ? [dest, color] : null;
+    if (!map || !dest) return;
+    capaRuta = L.layerGroup().addTo(map);
+    L.marker(dest, { icon: bolita(color), interactive: false }).addTo(capaRuta);
+    if (pos) tramo(pos, dest, color, false);
+    var todos = [dest]; if (pos) todos.push(pos);
+    seguir = false;
+    map.fitBounds(L.latLngBounds(todos), { paddingTopLeft: [40, 90], paddingBottomRight: [40, 420], maxZoom: 16 });
   };
 
   window.__mapa = function (mostrar, conectado) {
